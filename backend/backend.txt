@@ -1,0 +1,7 @@
+Thư mục backend gồm có 4 app và 1 core 
+core <- thư mục chính kết nối các app lại với nhau
+
+api <- nhận dữ liệu hành vi người dùng
+users <- login, signup, session, quản lý người dùng
+videos <- video bài học, metadata video
+analytics <- Xử lý hành vi người dùng
