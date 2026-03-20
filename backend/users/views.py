@@ -1,5 +1,11 @@
+import random
+import string
+from datetime import timedelta
 from django.shortcuts import render
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.contrib.auth import login, logout
+from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,6 +14,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
+from .models import User
 from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 # Create your views here.
@@ -119,4 +126,194 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+# Change Password & Forget Password
+def generate_otp(length=6):
+    return "".join(random.choices(string.digits, k=length))
+
+def get_otp_cache_key(email):
+    return f"otp_reset_{email}"
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Header: Authorization: Bearer <access_token>
+    Body: { old_password, new_password }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        # Validate input
+        if not old_password or not new_password:
+            return Response({
+                "error": "Vui lòng nhập đủ old_password và new_password."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check Old Password
+        if not user.check_password(old_password):
+            return Response(
+                {"error": "Mật khẩu cũ không đúng"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check Old and New is the same password
+        if old_password == new_password:
+            return Response(
+                {"error": "Mật khẩu mới không được trùng mật khẩu cũ."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+        # Check length password
+        if len(new_password) < 8:
+            return Response(
+                {"error": "Mật khẩu mới phải có ít nhất 8 ký tự."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Đổi mật khẩu thành công."})
+    
+class ForgotPasswordSendOTPView(APIView):
+    """
+    POST /api/auth/forgot-password/send-otp/
+    Body: { email }
+    Gửi mã OTP 6 số về email, hết hạn sau 5 phút.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", '').strip()
+
+        if not email:
+            return Response(
+                {"error": "Vui lòng nhập email."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check email exist
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"message": "Nếu email tồn tại, OTP đã được gửi."})
+        
+        # Generate OTP and save to cache (5 minutes)
+        otp = generate_otp()
+        cache.set(get_otp_cache_key(email), otp, timeout=600)
+
+        # Send Email
+        send_mail(
+            subject="Mã OTP đặt lại mật khẩu",
+            message=f"""
+Xin chào {user.full_name},
+
+Mã OTP của bạn là: {otp},
+
+Mã này có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này với bất kì ai.
+
+Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
+            """,
+            from_email=None,
+            recipient_list=[email],
+        )
+
+        return Response({"message": "Nếu email tồn tại, OTP đã được gửi."})
+    
+class ForgotPasswordVerifyOTPView(APIView):
+    """
+    POST /api/auth/forgot-password/verify-otp/
+    Body: { email, otp }
+    Trả về reset_token nếu OTP đúng.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip()
+        otp = request.data.get("otp", "").strip()
+
+        if not email and not otp:
+            return Response(
+                {"error": "Vui lòng nhập email và otp."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        cached_otp = cache.get(get_otp_cache_key(email))
+
+        if not cached_otp:
+            return Response(
+                {"error": "OTP đã hết hạn. Vui lòng yêu cầu lại."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if cached_otp != otp:
+            return Response(
+                {"error": "OTP không đúng"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # OTP is correct -> Delete OTP, generate reset_token (10 minutes)
+        cache.delete(get_otp_cache_key(email))
+        reset_token = generate_otp(32) # Token dài hơn để bảo mật
+        cache.set(f"reset_token_{email}", reset_token, timeout=1200)
+
+        return Response({
+            "message": "OTP hợp lệ",
+            "reset_token": {reset_token},
+        })
+    
+class ForgotPasswordResetView(APIView):
+    """
+    POST /api/auth/forgot-password/reset/
+    Body: { email, reset_token, new_password }
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip()
+        reset_token = request.data.get("reset_token", "").strip()
+        new_password = request.data.get("new_password", "")
+
+        if not email or not reset_token or not new_password:
+            return Response(
+                {"error": "Vui lòng nhập đủ email, reset_token và new_password"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(new_password) < 8:
+            return Response(
+                {"error": "Mật khẩu mới phải có ít nhất 8 ký tự."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check reset_token
+        cached_token = cache.get(f"reset_token_{email}")
+        if not cached_token or cached_token != reset_token:
+            return Response(
+                {"error": "Reset token không hợp lệ hoặc đã hết hạn."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Không tìm thấy tài khoản."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        user.set_password(new_password)
+        user.save()
+
+        # Delete Token after use
+        cache.delete(f"reset_token_{email}")
+
+        return Response({"message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại."})
     

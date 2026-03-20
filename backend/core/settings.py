@@ -154,6 +154,22 @@ SOCIALACCOUNT_LOGIN_ON_GET  = True
 LOGIN_REDIRECT_URL          = "/api/auth/me/"
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+
+# Gmail SMTP
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER  = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD =  config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = config("EMAIL_HOST_USER")
+
+# Cache (Lưu OTP)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
