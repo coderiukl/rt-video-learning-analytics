@@ -37,3 +37,6 @@ dist/
 
 # Cache
 .cache/
+
+docs/
+data/
