@@ -1,3 +1,45 @@
 from django.db import models
 
-# Create your models here.
+from courses.models import Course
+from users.models import StudentProfile
+from videos.models import Video
+
+
+class LearningEvent(models.Model):
+    class EventType(models.TextChoices):
+        PLAY = "play", "Play"
+        PAUSE = "pause", "Pause"
+        ENDED = "ended", "Ended"
+        SEEK = "seek", "Seek"
+        SKIP_FORWARD_10 = "skip_forward_10", "Skip forward 10 seconds"
+        SKIP_BACKWARD_10 = "skip_backward_10", "Skip backward 10 seconds"
+        RATE_CHANGE = "rate_change", "Playback speed changed"
+        NOTE_CREATED = "note_created", "Note created"
+        NOTE_UPDATED = "note_updated", "Note updated"
+        NOTE_DELETED = "note_deleted", "Note deleted"
+        PROGRESS_SYNC = "progress_sync", "Progress synced"
+
+    event_id = models.BigAutoField(primary_key=True)
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name="learning_events")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="learning_events")
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="learning_events")
+    event_type = models.CharField(max_length=40, choices=EventType.choices)
+    position_seconds = models.PositiveIntegerField(default=0)
+    from_seconds = models.PositiveIntegerField(null=True, blank=True)
+    to_seconds = models.PositiveIntegerField(null=True, blank=True)
+    delta_seconds = models.IntegerField(default=0)
+    playback_rate = models.FloatField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "learning_events"
+        indexes = [
+            models.Index(fields=["course", "created_at"]),
+            models.Index(fields=["video", "event_type"]),
+            models.Index(fields=["student", "course"]),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student_id} {self.event_type} video={self.video_id}"
