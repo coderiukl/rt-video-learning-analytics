@@ -1,1 +1,8 @@
 django==5.2.12
+djangorestframework
+djangorestframework-simplejwt
+django-allauth
+python-decouple
+psycopg2
+drf-spectacular
+django-cloudinary-storage

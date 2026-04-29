@@ -14,8 +14,13 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
-from .models import User
-from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from .models import InstructorProfile, User
+from .serializers import (
+    InstructorProfileSerializer,
+    LoginSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
 
 # Create your views here.
 def get_tokens_for_user(user):
@@ -126,6 +131,55 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class InstructorProfileApplyView(APIView):
+    """
+    POST /api/auth/instructor-profile/
+    Body: { headline, bio, profile_url, expertise }
+    Creates or updates a pending instructor profile. Admin approval is required.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            profile = request.user.instructor_profile
+        except InstructorProfile.DoesNotExist:
+            return Response({"status": "none"})
+
+        return Response({
+            "status": UserSerializer(request.user).data["instructor_status"],
+            "profile": InstructorProfileSerializer(profile).data,
+        })
+
+    def post(self, request):
+        try:
+            profile = request.user.instructor_profile
+        except InstructorProfile.DoesNotExist:
+            profile = None
+
+        if (
+            profile
+            and request.user.role == User.Role.INSTRUCTOR
+            and profile.is_verified
+            and profile.is_active
+        ):
+            return Response(
+                {"error": "Hồ sơ giảng viên đã được duyệt."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created = profile is None
+        serializer = InstructorProfileSerializer(profile, data=request.data, partial=bool(profile))
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = serializer.save(user=request.user, is_verified=False, is_active=False)
+        return Response({
+            "message": "Hồ sơ giảng viên đã được gửi. Vui lòng chờ admin duyệt.",
+            "status": "pending",
+            "profile": InstructorProfileSerializer(profile).data,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 # Change Password & Forget Password
 def generate_otp(length=6):
@@ -265,7 +319,7 @@ class ForgotPasswordVerifyOTPView(APIView):
 
         return Response({
             "message": "OTP hợp lệ",
-            "reset_token": {reset_token},
+            "reset_token": reset_token,
         })
     
 class ForgotPasswordResetView(APIView):

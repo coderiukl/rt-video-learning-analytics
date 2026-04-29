@@ -3,7 +3,7 @@ from .views import (
     RegisterView,
     JWTLoginView, JWTLogutView, JWTRefreshView,
     ChangePasswordView, ForgotPasswordResetView, ForgotPasswordSendOTPView, ForgotPasswordVerifyOTPView,
-    MeView,
+    InstructorProfileApplyView, MeView,
 )
 
 urlpatterns = [
@@ -25,4 +25,5 @@ urlpatterns = [
 
     # Profile
     path('me/', MeView.as_view(), name='auth-me'),
+    path('instructor-profile/', InstructorProfileApplyView.as_view(), name='instructor-profile'),
 ]
