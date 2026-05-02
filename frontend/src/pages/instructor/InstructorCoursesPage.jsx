@@ -74,6 +74,7 @@ export default function InstructorCoursesPage() {
               showActions
               onEdit={(c) => navigate(`/instructor/courses/${c.course_id}/edit`)}
               onVideos={(c) => navigate(`/instructor/courses/${c.course_id}/videos`)}
+              onAnalytics={(c) => navigate(`/instructor/courses/${c.course_id}/analytics`)}
               onDelete={handleDelete}
             />
           ))}
