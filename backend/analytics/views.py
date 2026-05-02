@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.db.models import Count, Max, Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -8,7 +11,10 @@ from courses.models import Course, CourseEnrollment
 from courses.views import get_instructor_profile, get_student_profile, is_approved_instructor
 from videos.models import Video
 from .models import LearningEvent
-
+from .ml_engine import compute_engagement_score, get_engagement_label, compute_risk_score, compute_video_heatmap
+from .dropout_predictor import predict_dropout, train_model, get_model_status
+from .learning_style import cluster_learning_styles
+from .recommender import recommend_courses_for_student, recommend_courses_for_student_global
 
 def is_admin(user):
     return user.is_staff or user.role == "admin"
@@ -159,7 +165,16 @@ class LearningEventCreateView(APIView):
             playback_rate=float_or_none(request.data.get("playback_rate")),
             metadata=request.data.get("metadata") or {},
         )
-        return Response(serialize_event(event), status=status.HTTP_201_CREATED)
+        
+        # Cập nhật ngay lập tức last_accessed_at để bảng At-Risk không báo lỗi "Chưa từng truy cập"
+        from django.utils import timezone
+        CourseEnrollment.objects.filter(student=student, course=video.course).update(last_accessed_at=timezone.now())
+
+        engagement_score = compute_engagement_score(student, video)
+        response_data = serialize_event(event)
+        response_data["engagement_score"] = engagement_score
+        response_data["engagement_label"] = get_engagement_label(engagement_score)
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 class CourseBehaviorAnalyticsView(APIView):
@@ -206,3 +221,181 @@ class AdminBehaviorAnalyticsView(APIView):
         else:
             courses = Course.objects.all()
         return Response(build_behavior_payload(events, courses))
+
+
+class AtRiskStudentsView(APIView):
+    """GET /api/analytics/courses/{course_id}/at-risk/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(course_id=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Khóa học không tồn tại."}, status=404)
+
+        if not can_view_course_behavior(request.user, course):
+            return Response({"error": "Không có quyền."}, status=403)
+
+        now = timezone.now()
+        recent_cutoff = now - timedelta(days=30)
+
+        enrollments = CourseEnrollment.objects.filter(
+            course=course, status=CourseEnrollment.Status.ACTIVE
+        ).select_related("student__user")
+
+        results = []
+        model_type_used = None
+
+        for enrollment in enrollments:
+            # Query events 30 ngày cho student này
+            events_30d = LearningEvent.objects.filter(
+                student=enrollment.student,
+                course=course,
+                created_at__gte=recent_cutoff,
+            )
+            # Dùng predict_dropout (RF nếu có model, fallback rule-based)
+            risk_data = predict_dropout(enrollment, events_30d)
+            model_type_used = risk_data.get("model_type", "rule-based")
+
+            results.append({
+                "student_id": str(enrollment.student_id),
+                "student_name": enrollment.student.user.full_name,
+                "student_email": enrollment.student.user.email,
+                "course_progress_percent": enrollment.course_progress_percent,
+                "days_enrolled": (now - enrollment.enrolled_at).days,
+                "last_accessed_at": enrollment.last_accessed_at,
+                **risk_data,
+            })
+
+        results.sort(key=lambda x: x["risk_score"], reverse=True)
+
+        return Response({
+            "course_id": course_id,
+            "course_name": course.course_name,
+            "total_active_students": len(results),
+            "high_risk_count": sum(1 for r in results if r["risk_level"] == "high"),
+            "model_type": model_type_used or "rule-based",
+            "students": results,
+        })
+
+
+class DropoutModelTrainView(APIView):
+    """POST /api/analytics/dropout-model/train/ — trigger retrain (admin/instructor only)"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not (is_admin(request.user) or is_approved_instructor(request.user)):
+            return Response(
+                {"error": "Chỉ admin hoặc instructor mới có quyền train model."},
+                status=403,
+            )
+
+        result = train_model()
+
+        if not result.get("success"):
+            return Response(result, status=400)
+
+        return Response(result, status=200)
+
+
+class DropoutModelStatusView(APIView):
+    """GET /api/analytics/dropout-model/status/ — model info"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (is_admin(request.user) or is_approved_instructor(request.user)):
+            return Response(
+                {"error": "Không có quyền."},
+                status=403,
+            )
+
+        model_status = get_model_status()
+        return Response(model_status, status=200)
+
+
+from videos.models import Video as VideoModel
+
+class VideoHeatmapView(APIView):
+    """GET /api/analytics/videos/{video_id}/heatmap/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, video_id):
+        try:
+            video = VideoModel.objects.select_related(
+                "course__instructor__user"
+            ).get(video_id=video_id)
+        except VideoModel.DoesNotExist:
+            return Response({"error": "Video không tồn tại."}, status=404)
+
+        if not can_view_course_behavior(request.user, video.course):
+            return Response({"error": "Không có quyền."}, status=403)
+
+        segment_size = int(request.query_params.get("segment_size", 30))
+        heatmap = compute_video_heatmap(video, segment_size=segment_size)
+        hard_segments = [s for s in heatmap if s["difficulty_label"] == "hard"]
+
+        return Response({
+            "video_id": video_id,
+            "video_title": video.title,
+            "duration_seconds": video.duration_seconds,
+            "segment_size_seconds": segment_size,
+            "total_segments_analyzed": len(heatmap),
+            "hard_segment_count": len(hard_segments),
+            "hardest_segments": heatmap[:5],
+            "full_heatmap": heatmap,
+        })
+
+
+class LearningStyleView(APIView):
+    """GET /api/analytics/courses/{course_id}/learning-styles/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(course_id=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Khóa học không tồn tại."}, status=404)
+
+        if not can_view_course_behavior(request.user, course):
+            return Response({"error": "Không có quyền."}, status=403)
+
+        data = cluster_learning_styles(course)
+        
+        return Response(data, status=200)
+
+
+class CourseRecommendationView(APIView):
+    """GET /api/analytics/courses/{course_id}/recommendations/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(course_id=course_id, status=Course.Status.PUBLISHED)
+        except Course.DoesNotExist:
+            return Response({"error": "Khóa học không tồn tại hoặc chưa được xuất bản."}, status=404)
+
+        student = get_student_profile(request.user)
+        # Bất kỳ ai cũng có thể xem gợi ý, nhưng lọc bỏ course đã enroll thì cần truyền student.
+        # Nếu không phải student (chưa có profile), sẽ truyền None.
+
+        recommendations = recommend_courses_for_student(student, course.course_id)
+
+        return Response({
+            "course_id": course_id,
+            "recommendations": recommendations
+        })
+
+class PersonalizedCourseRecommendationView(APIView):
+    """GET /api/analytics/courses/personalized-recommendations/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = get_student_profile(request.user)
+        if not student:
+            return Response({"error": "Chỉ sinh viên mới có thể nhận gợi ý cá nhân hóa."}, status=403)
+
+        recommendations = recommend_courses_for_student_global(student, n=4)
+
+        return Response({
+            "recommendations": recommendations
+        })
