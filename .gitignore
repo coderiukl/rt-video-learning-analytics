@@ -40,3 +40,7 @@ dist/
 
 docs/
 data/
+
+# Machine Learning models
+*.pkl
+backend/models/

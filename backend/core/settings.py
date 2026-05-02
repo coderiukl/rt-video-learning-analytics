@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'courses',
     'videos',
     'analytics',
+    'django_apscheduler',
     'api',
 ]
 
