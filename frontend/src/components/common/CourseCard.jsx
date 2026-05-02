@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { BookOpen, Globe, BarChart2, User } from 'lucide-react'
 import { LEVEL_LABELS, LANGUAGE_LABELS, STATUS_LABELS, STATUS_BADGE } from '../../utils/helpers'
 
-export default function CourseCard({ course, showActions, onEdit, onDelete, onVideos, to }) {
+export default function CourseCard({ course, showActions, onEdit, onDelete, onVideos, onAnalytics, to }) {
   const navigate = useNavigate()
   const courseId = course.course_id || course.id
 
@@ -83,10 +83,10 @@ export default function CourseCard({ course, showActions, onEdit, onDelete, onVi
 
         {/* Actions for instructor */}
         {showActions && (
-          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4, flexWrap: 'wrap' }}>
             <button
               className="btn btn-secondary btn-sm"
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: '30%' }}
               onClick={(e) => { e.stopPropagation(); onEdit?.(course) }}
             >
               Sửa
@@ -94,15 +94,25 @@ export default function CourseCard({ course, showActions, onEdit, onDelete, onVi
             {onVideos && (
               <button
                 className="btn btn-secondary btn-sm"
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: '30%' }}
                 onClick={(e) => { e.stopPropagation(); onVideos?.(course) }}
               >
                 Video
               </button>
             )}
+            {onAnalytics && (
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ flex: 1, minWidth: '30%' }}
+                onClick={(e) => { e.stopPropagation(); onAnalytics?.(course) }}
+                title="Phân tích Machine Learning"
+              >
+                <BarChart2 size={14} /> ML
+              </button>
+            )}
             <button
               className="btn btn-danger btn-sm"
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: '30%' }}
               onClick={(e) => { e.stopPropagation(); onDelete?.(course) }}
             >
               Xóa

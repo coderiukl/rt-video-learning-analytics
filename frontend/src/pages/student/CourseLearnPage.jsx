@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { analyticsApi, courseApi, noteApi, progressApi, videoApi } from '../../api/client'
 import {
   ArrowLeft, BookOpen, CheckCircle, Clock, Plus, PlayCircle,
-  Pencil, RotateCcw, RotateCw, StickyNote, Trash2, X,
+  Pencil, RotateCcw, RotateCw, StickyNote, Trash2, X, Activity, Info,
 } from 'lucide-react'
 
 function formatTime(seconds) {
@@ -56,6 +56,9 @@ export default function CourseLearnPage() {
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [notes, setNotes] = useState([])
   const [noteLoading, setNoteLoading] = useState(false)
+  const [engagementScore, setEngagementScore] = useState(null)
+  const [engagementLabel, setEngagementLabel] = useState(null)
+  const [toastMessage, setToastMessage] = useState(null)
 
   useEffect(() => {
     Promise.all([courseApi.get(id), videoApi.list(id)])
@@ -74,21 +77,31 @@ export default function CourseLearnPage() {
   )
   const embedUrl = getEmbedUrl(activeVideo?.video_src)
 
-  const logLearningEvent = useCallback((eventType, payload = {}) => {
+  const logLearningEvent = useCallback(async (eventType, payload = {}) => {
     if (!activeVideo?.video_id || embedUrl) return
-    analyticsApi.trackEvent({
-      video: activeVideo.video_id,
-      event_type: eventType,
-      position_seconds: Math.floor(payload.position_seconds ?? currentTime),
-      from_seconds: payload.from_seconds,
-      to_seconds: payload.to_seconds,
-      delta_seconds: payload.delta_seconds,
-      playback_rate: payload.playback_rate,
-      metadata: payload.metadata || {},
-    }).catch(() => {
-      // Analytics must never interrupt the learning flow.
-    })
-  }, [activeVideo?.video_id, currentTime, embedUrl])
+    try {
+      const res = await analyticsApi.trackEvent({
+        video: activeVideo.video_id,
+        event_type: eventType,
+        position_seconds: Math.floor(payload.position_seconds ?? currentTime),
+        from_seconds: payload.from_seconds,
+        to_seconds: payload.to_seconds,
+        delta_seconds: payload.delta_seconds,
+        playback_rate: payload.playback_rate,
+        metadata: payload.metadata || {},
+      });
+      if (res.data?.engagement_score !== undefined) {
+        if (res.data.engagement_label === 'low' && engagementLabel !== 'low') {
+          setToastMessage("Tốc độ bài giảng có vẻ hơi nhanh? Hãy thử dừng lại một chút để xem lại phần ghi chú nhé! ☕")
+          setTimeout(() => setToastMessage(null), 8000)
+        }
+        setEngagementScore(res.data.engagement_score);
+        setEngagementLabel(res.data.engagement_label);
+      }
+    } catch (err) {
+      console.error('Lỗi khi gửi sự kiện Analytics:', err.response?.data || err.message)
+    }
+  }, [activeVideo, embedUrl, currentTime, engagementLabel])
 
   useEffect(() => {
     progressSyncRef.current = { videoId: activeVideo?.video_id || null, lastSentAt: 0, saving: false }
@@ -284,6 +297,7 @@ export default function CourseLearnPage() {
           <div style={{
             background: '#05070d', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
             overflow: 'hidden', aspectRatio: '16 / 9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
           }}>
             {embedUrl ? (
               <iframe
@@ -531,6 +545,29 @@ export default function CourseLearnPage() {
           )}
         </div>
       </div>
+
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', bottom: 30, right: 30, zIndex: 100,
+          background: 'var(--bg-elevated)', border: '1px solid var(--warning)',
+          borderRadius: 'var(--radius-lg)', padding: '16px 20px',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.3)', color: 'var(--text-primary)',
+          display: 'flex', alignItems: 'flex-start', gap: 12, maxWidth: 350,
+          transition: 'all 0.3s ease-in-out'
+        }}>
+          <Info color="var(--warning)" size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+            <strong style={{ display: 'block', color: 'var(--warning)', marginBottom: 4 }}>Nhắc nhở nhẹ nhàng</strong>
+            {toastMessage}
+          </div>
+          <button 
+            onClick={() => setToastMessage(null)} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

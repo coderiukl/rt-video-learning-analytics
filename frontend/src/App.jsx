@@ -25,6 +25,7 @@ import CreateCoursePage from './pages/instructor/CreateCoursePage'
 import EditCoursePage from './pages/instructor/EditCoursePage'
 import CourseVideosPage from './pages/instructor/CourseVideosPage'
 import CategoryManagementPage from './pages/instructor/CategoryManagementPage'
+import CourseAnalyticsPage from './pages/instructor/CourseAnalyticsPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 
 // Layout wrapper for authenticated pages
@@ -95,6 +96,11 @@ export default function App() {
           <Route path="/instructor/courses/:id/videos" element={
             <ProtectedRoute role="instructor">
               <AuthLayout><CourseVideosPage /></AuthLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/instructor/courses/:id/analytics" element={
+            <ProtectedRoute role="instructor">
+              <AuthLayout><CourseAnalyticsPage /></AuthLayout>
             </ProtectedRoute>
           } />
           <Route path="/instructor/categories" element={

@@ -121,7 +121,18 @@ export const analyticsApi = {
     trackEvent: (data) => apiClient.post('/api/analytics/events/', data),
     instructorBehavior: () => apiClient.get('/api/analytics/instructor/behavior/'),
     courseBehavior: (courseId) => apiClient.get(`/api/analytics/courses/${courseId}/behavior/`),
+    courseAtRisk: (courseId) => apiClient.get(`/api/analytics/courses/${courseId}/at-risk/`),
+    videoHeatmap: (videoId) => apiClient.get(`/api/analytics/videos/${videoId}/heatmap/`),
     adminBehavior: (params) => apiClient.get('/api/analytics/admin/behavior/', { params }),
+    // Dropout Prediction Model
+    trainDropoutModel: () => apiClient.post('/api/analytics/dropout-model/train/'),
+    dropoutModelStatus: () => apiClient.get('/api/analytics/dropout-model/status/'),
+    // Learning Styles
+    learningStyles: (courseId) => apiClient.get(`/api/analytics/courses/${courseId}/learning-styles/`),
+    // Course Recommendations
+    courseRecommendations: (courseId) => apiClient.get(`/api/analytics/courses/${courseId}/recommendations/`),
+    // Personalized Recommendations
+    personalizedCourseRecommendations: () => apiClient.get(`/api/analytics/courses/personalized-recommendations/`),
 }
 
 export default apiClient

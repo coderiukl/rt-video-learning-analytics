@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { courseApi, videoApi } from '../../api/client'
+import { courseApi, videoApi, analyticsApi } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
 import {
-  AlertCircle, BarChart2, BookOpen, CheckCircle, Globe, User, Video,
+  AlertCircle, BarChart2, BookOpen, CheckCircle, Globe, User, Video, Sparkles
 } from 'lucide-react'
 import { LANGUAGE_LABELS, LEVEL_LABELS, STATUS_BADGE, STATUS_LABELS } from '../../utils/helpers'
 
@@ -17,12 +17,20 @@ export default function CourseDetailPage() {
   const [enrollMsg, setEnrollMsg] = useState(null)
   const [videos, setVideos] = useState([])
   const [videoLoading, setVideoLoading] = useState(false)
+  const [recommendations, setRecommendations] = useState([])
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
 
   useEffect(() => {
     courseApi.get(id)
       .then(res => setCourse(res.data))
       .catch(() => navigate('/courses'))
       .finally(() => setLoading(false))
+
+    setRecommendationsLoading(true)
+    analyticsApi.courseRecommendations(id)
+      .then(res => setRecommendations(res.data?.recommendations || []))
+      .catch(() => setRecommendations([]))
+      .finally(() => setRecommendationsLoading(false))
   }, [id, navigate])
 
   useEffect(() => {
@@ -154,6 +162,57 @@ export default function CourseDetailPage() {
               </div>
             )}
           </div>
+
+          {(recommendationsLoading || recommendations.length > 0) && (
+            <div className="card" style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent)' }}>
+                <Sparkles size={18} /> Các khóa học có thể bạn sẽ thích
+              </h3>
+              
+              {recommendationsLoading ? (
+                <div style={{ padding: 20, textAlign: 'center' }}>
+                  <span className="spinner" style={{ width: 24, height: 24, display: 'inline-block' }} />
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                  {recommendations.map((rec) => (
+                    <div 
+                      key={rec.course_id}
+                      onClick={() => navigate(`/courses/${rec.course_id}`)}
+                      style={{
+                        padding: 16,
+                        borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)'
+                        e.currentTarget.style.transform = 'none'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                    >
+                      <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {rec.course_name}
+                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+                        <User size={13} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {rec.instructor_name}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div style={{ position: 'sticky', top: 20 }}>
