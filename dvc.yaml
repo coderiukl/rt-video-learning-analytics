@@ -1,0 +1,94 @@
+stages:
+  extract:
+    # Export source-of-truth database tables into raw CSV snapshots.
+    cmd: python -m mlops.extract_data
+    deps:
+      - mlops/common.py
+      - mlops/extract_data.py
+      - backend/courses/models.py
+      - backend/videos/models.py
+    outs:
+      - data/raw/courses.csv
+      - data/raw/enrollments.csv
+      - data/raw/videos.csv
+      - data/raw/video_progress.csv
+      - data/raw/video_notes.csv
+
+  validate:
+    # Stop the pipeline early if raw data is invalid.
+    cmd: python -m mlops.validate_data
+    deps:
+      - mlops/common.py
+      - mlops/validate_data.py
+      - data/raw/courses.csv
+      - data/raw/enrollments.csv
+      - data/raw/videos.csv
+      - data/raw/video_progress.csv
+    metrics:
+      - metrics/data_validation.json:
+          cache: false
+
+  features:
+    # Build recommender/dropout features from raw snapshots.
+    cmd: python -m mlops.build_features
+    deps:
+      - mlops/common.py
+      - mlops/build_features.py
+      - data/raw/courses.csv
+      - data/raw/enrollments.csv
+      - data/raw/videos.csv
+      - data/raw/video_progress.csv
+      - data/raw/video_notes.csv
+    outs:
+      - data/processed/recommender_interactions.csv
+      - data/processed/dropout_features.csv
+
+  train_recommender:
+    # Train candidate SVD recommender and log run to MLflow.
+    cmd: python -m mlops.train_recommender
+    deps:
+      - mlops/common.py
+      - mlops/mlflow_utils.py
+      - mlops/train_recommender.py
+      - data/processed/recommender_interactions.csv
+    params:
+      - recommender
+    outs:
+      - models/candidate/recommender.joblib
+    metrics:
+      - metrics/recommender.json:
+          cache: false
+
+  train_dropout:
+    # Train candidate RandomForest dropout model and log run to MLflow.
+    cmd: python -m mlops.train_dropout
+    deps:
+      - mlops/common.py
+      - mlops/mlflow_utils.py
+      - mlops/train_dropout.py
+      - data/processed/dropout_features.csv
+    params:
+      - dropout
+    outs:
+      - models/candidate/dropout_model.joblib
+    metrics:
+      - metrics/dropout.json:
+          cache: false
+
+  promote:
+    # Promote ready candidate models to production artifacts.
+    cmd: python -m mlops.promote_model
+    deps:
+      - mlops/common.py
+      - mlops/promote_model.py
+      - models/candidate/recommender.joblib
+      - models/candidate/dropout_model.joblib
+      - metrics/recommender.json
+      - metrics/dropout.json
+    outs:
+      - models/production/recommender.joblib
+      - models/production/dropout_model.joblib
+    metrics:
+      - metrics/promotion.json:
+          cache: false
+
