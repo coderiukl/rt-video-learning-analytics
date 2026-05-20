@@ -1,8 +1,19 @@
+import re
+
 from django.db import models
 
 from courses.models import Course
 from users.models import StudentProfile
 from .storage import LargeVideoCloudinaryStorage
+
+
+def video_upload_path(instance, filename):
+    """Cloudinary folder: LearnFlow/course_videos/<tên khóa học>/"""
+    course_title = instance.course.course_name if instance.course_id else "unknown"
+    # Sanitize: chỉ giữ chữ, số, dấu cách, gạch ngang
+    safe_title = re.sub(r"[^\w\s-]", "", course_title).strip()
+    safe_title = re.sub(r"\s+", "_", safe_title)
+    return f"LearnFlow/course_videos/{safe_title}/{filename}"
 
 
 class Video(models.Model):
@@ -11,7 +22,7 @@ class Video(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     video_file = models.FileField(
-        upload_to="LearnFlow/course_videos/%Y/%m/",
+        upload_to=video_upload_path,
         storage=LargeVideoCloudinaryStorage(),
         blank=True,
         null=True,

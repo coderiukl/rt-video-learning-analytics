@@ -19,6 +19,7 @@ from .serializers import (
     InstructorProfileSerializer,
     LoginSerializer,
     RegisterSerializer,
+    UserProfileUpdateSerializer,
     UserSerializer,
 )
 
@@ -32,8 +33,10 @@ def get_tokens_for_user(user):
     }
 
 def update_last_login(user):
-    user.last_login_at = timezone.now()
-    user.save(update_fields=["last_login_at"])
+    now = timezone.now()
+    user.last_login = now
+    user.last_login_at = now
+    user.save(update_fields=["last_login", "last_login_at"])
 
 # Register
 class RegisterView(APIView):
@@ -131,6 +134,14 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = UserProfileUpdateSerializer(request.user, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.save()
+        return Response(UserSerializer(user).data)
 
 
 class InstructorProfileApplyView(APIView):

@@ -38,7 +38,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "user_id", "email", "full_name", "avatar_url", "role",
-            "is_staff", "is_superuser", "is_email_verified", "instructor_status", "created_at",
+            "is_staff", "is_superuser", "is_email_verified", "instructor_status",
+            "last_login", "last_login_at", "created_at",
         ]
 
     def get_instructor_status(self, user):
@@ -50,6 +51,18 @@ class UserSerializer(serializers.ModelSerializer):
         if user.role == User.Role.INSTRUCTOR and profile.is_verified and profile.is_active:
             return "approved"
         return "pending"
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["full_name", "avatar_url"]
+
+    def validate_full_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Vui lòng nhập họ và tên.")
+        return value
 
 
 class InstructorProfileSerializer(serializers.ModelSerializer):

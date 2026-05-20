@@ -4,6 +4,7 @@ from .models import Category, Course, CourseEnrollment
 # CATEGORY
 class CategorySerializer(serializers.ModelSerializer):
     subcategories = serializers.SerializerMethodField()
+    parent_id = serializers.IntegerField(source='parent.category_id', read_only=True, allow_null=True)
 
     class Meta:
         model = Category
