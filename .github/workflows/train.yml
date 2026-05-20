@@ -1,0 +1,46 @@
+name: retrain
+on:
+  schedule:
+    - cron: "0 2 * * 1"   # mỗi thứ 2 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: core.settings
+      MLFLOW_TRACKING_URI: file:./mlruns
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install xgboost shap
+
+      - name: Pull data from DVC remote
+        run: dvc pull --allow-missing || echo "no remote data yet"
+
+      - name: Run pipeline
+        run: dvc repro --pull
+
+      - name: Promote model if gates pass
+        run: python mlops/pipelines/08_registrer.py
+
+      - name: Push DVC artifacts
+        if: success()
+        run: dvc push || echo "no remote configured"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: training-artifacts
+          path: |
+            metrics/
+            reports/
+            models/
