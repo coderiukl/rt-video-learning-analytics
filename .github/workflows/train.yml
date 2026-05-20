@@ -6,7 +6,7 @@ on:
 
 jobs:
   retrain:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       DJANGO_SETTINGS_MODULE: core.settings
       MLFLOW_TRACKING_URI: file:./mlruns
