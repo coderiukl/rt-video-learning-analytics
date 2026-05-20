@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE_URL = 'http://localhost:8000'
+const BASE_URL = 'http://127.0.0.1:8000'
 
 const apiClient = axios.create({
     baseURL: BASE_URL,
@@ -60,6 +60,7 @@ export const authApi = {
     login: (data) => apiClient.post('/api/auth/login/', data),
     logout: (data) => apiClient.post('/api/auth/logout/', data),
     me: () => apiClient.get('/api/auth/me/'),
+    updateProfile: (data) => apiClient.patch('/api/auth/me/', data),
     changePassword: (data) => apiClient.post('/api/auth/change-password/', data),
     getInstructorProfile: () => apiClient.get('/api/auth/instructor-profile/'),
     applyInstructorProfile: (data) => apiClient.post('/api/auth/instructor-profile/', data),
@@ -92,6 +93,7 @@ export const courseApi = {
 
 export const adminApi = {
     dashboard: (params) => apiClient.get('/api/admin/dashboard/', { params }),
+    approveInstructor: (userId) => apiClient.post(`/api/admin/instructors/${userId}/approve/`),
 }
 
 export const videoApi = {
@@ -136,3 +138,56 @@ export const analyticsApi = {
 }
 
 export default apiClient
+
+export const notificationApi = {
+    list: (params) => apiClient.get('/api/notifications/', { params }),
+    readAll: () => apiClient.post('/api/notifications/read/'),
+    read: (id) => apiClient.post(`/api/notifications/${id}/read/`),
+}
+
+export const adminManageApi = {
+    users: (params) => apiClient.get('/api/admin/users/', { params }),
+    updateUser: (userId, data) => apiClient.patch(`/api/admin/users/${userId}/`, data),
+    lockUser: (userId) => apiClient.delete(`/api/admin/users/${userId}/`),
+    resetPassword: (userId, data) => apiClient.post(`/api/admin/users/${userId}/reset-password/`, data),
+    rejectInstructor: (userId, data) => apiClient.post(`/api/admin/instructors/${userId}/reject/`, data),
+    courses: (params) => apiClient.get('/api/admin/courses/', { params }),
+    moderateCourse: (courseId, data) => apiClient.patch(`/api/admin/courses/${courseId}/moderate/`, data),
+    auditLogs: () => apiClient.get('/api/admin/audit-logs/'),
+    settings: () => apiClient.get('/api/admin/settings/'),
+    saveSetting: (data) => apiClient.post('/api/admin/settings/', data),
+}
+
+export const studentExtrasApi = {
+    wishlist: () => apiClient.get('/api/wishlist/'),
+    addWishlist: (courseId) => apiClient.post('/api/wishlist/', { course_id: courseId }),
+    removeWishlist: (courseId) => apiClient.delete('/api/wishlist/', { data: { course_id: courseId } }),
+    reviews: (courseId) => apiClient.get(`/api/courses/${courseId}/reviews/`),
+    saveReview: (courseId, data) => apiClient.post(`/api/courses/${courseId}/reviews/`, data),
+    certificates: () => apiClient.get('/api/certificates/'),
+    issueCertificate: (courseId) => apiClient.post(`/api/courses/${courseId}/certificates/issue/`),
+    goals: () => apiClient.get('/api/goals/'),
+    createGoal: (data) => apiClient.post('/api/goals/', data),
+    updateGoal: (id, data) => apiClient.patch(`/api/goals/${id}/`, data),
+    deleteGoal: (id) => apiClient.delete(`/api/goals/${id}/`),
+    continueWatching: () => apiClient.get('/api/continue-watching/'),
+    searchNotes: (q) => apiClient.get('/api/notes/search/', { params: { q } }),
+}
+
+export const discussionApi = {
+    list: (courseId) => apiClient.get(`/api/courses/${courseId}/discussions/`),
+    create: (courseId, data) => apiClient.post(`/api/courses/${courseId}/discussions/`, data),
+    replies: (discussionId) => apiClient.get(`/api/discussions/${discussionId}/replies/`),
+}
+
+export const reportApi = {
+    list: () => apiClient.get('/api/reports/'),
+    create: (data) => apiClient.post('/api/reports/', data),
+    update: (id, data) => apiClient.patch(`/api/reports/${id}/`, data),
+}
+
+export const instructorManageApi = {
+    dashboard: () => apiClient.get('/api/instructor/dashboard/'),
+    students: (params) => apiClient.get('/api/instructor/students/', { params }),
+    notifyAtRisk: (enrollmentId, data) => apiClient.post(`/api/instructor/enrollments/${enrollmentId}/notify-at-risk/`, data),
+}

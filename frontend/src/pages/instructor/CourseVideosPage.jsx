@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { courseApi, videoApi } from '../../api/client'
 import FormField from '../../components/forms/FormField'
@@ -8,7 +8,7 @@ const emptyForm = {
   title: '',
   description: '',
   video_url: '',
-  duration_seconds: '',
+  duration_minutes: '',
   order: 1,
   is_preview: false,
   is_published: true,
@@ -20,7 +20,8 @@ function toFormData(form) {
   data.append('title', form.title)
   data.append('description', form.description || '')
   data.append('video_url', form.video_url || '')
-  data.append('duration_seconds', form.duration_seconds || 0)
+  const durationSeconds = Math.max(0, Math.round(Number(form.duration_minutes || 0) * 60))
+  data.append('duration_seconds', durationSeconds)
   data.append('order', form.order || 1)
   data.append('is_preview', form.is_preview ? 'true' : 'false')
   data.append('is_published', form.is_published ? 'true' : 'false')
@@ -70,7 +71,7 @@ export default function CourseVideosPage() {
       title: video.title || '',
       description: video.description || '',
       video_url: video.video_url || '',
-      duration_seconds: video.duration_seconds || '',
+      duration_minutes: video.duration_seconds ? Math.round((Number(video.duration_seconds) / 60) * 100) / 100 : '',
       order: video.order || 1,
       is_preview: Boolean(video.is_preview),
       is_published: Boolean(video.is_published),
@@ -159,8 +160,8 @@ export default function CourseVideosPage() {
             <div className="grid-2">
               <FormField label="Thứ tự" name="order" type="number" value={form.order}
                 onChange={e => setForm({ ...form, order: e.target.value })} required />
-              <FormField label="Thời lượng (giây)" name="duration_seconds" type="number" value={form.duration_seconds}
-                onChange={e => setForm({ ...form, duration_seconds: e.target.value })} />
+              <FormField label="Thời lượng (phút)" name="duration_minutes" type="number" value={form.duration_minutes}
+                onChange={e => setForm({ ...form, duration_minutes: e.target.value })} />
             </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { courseApi, videoApi, analyticsApi } from '../../api/client'
+import { courseApi, videoApi, analyticsApi, studentExtrasApi, discussionApi, reportApi } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
 import {
   AlertCircle, BarChart2, BookOpen, CheckCircle, Globe, User, Video, Sparkles
@@ -19,6 +19,10 @@ export default function CourseDetailPage() {
   const [videoLoading, setVideoLoading] = useState(false)
   const [recommendations, setRecommendations] = useState([])
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const [reviews, setReviews] = useState([])
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' })
+  const [discussions, setDiscussions] = useState([])
+  const [discussionText, setDiscussionText] = useState('')
 
   useEffect(() => {
     courseApi.get(id)
@@ -31,6 +35,9 @@ export default function CourseDetailPage() {
       .then(res => setRecommendations(res.data?.recommendations || []))
       .catch(() => setRecommendations([]))
       .finally(() => setRecommendationsLoading(false))
+
+    studentExtrasApi.reviews(id).then(res => setReviews(res.data || [])).catch(() => setReviews([]))
+    discussionApi.list(id).then(res => setDiscussions(res.data || [])).catch(() => setDiscussions([]))
   }, [id, navigate])
 
   useEffect(() => {
@@ -71,6 +78,37 @@ export default function CourseDetailPage() {
 
   const handleStartLearning = () => {
     navigate(`/courses/${id}/learn`)
+  }
+
+  const saveReview = async (e) => {
+    e.preventDefault()
+    await studentExtrasApi.saveReview(id, { rating: Number(reviewForm.rating), comment: reviewForm.comment })
+    const res = await studentExtrasApi.reviews(id)
+    setReviews(res.data || [])
+    setReviewForm({ rating: 5, comment: '' })
+  }
+
+  const addDiscussion = async (e) => {
+    e.preventDefault()
+    if (!discussionText.trim()) return
+    await discussionApi.create(id, { content: discussionText })
+    const res = await discussionApi.list(id)
+    setDiscussions(res.data || [])
+    setDiscussionText('')
+  }
+
+  const addWishlist = async () => {
+    if (!user) return navigate('/login')
+    await studentExtrasApi.addWishlist(id)
+    setEnrollMsg({ type: 'success', text: 'Đã thêm vào wishlist.' })
+  }
+
+  const reportCourse = async () => {
+    if (!user) return navigate('/login')
+    const reason = window.prompt('Lý do báo cáo khóa học?')
+    if (!reason) return
+    await reportApi.create({ target_type: 'course', target_id: String(id), reason })
+    setEnrollMsg({ type: 'success', text: 'Đã gửi báo cáo.' })
   }
 
   if (loading) {
@@ -213,6 +251,33 @@ export default function CourseDetailPage() {
               )}
             </div>
           )}
+
+          <div className="card" style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Đánh giá</h3>
+            {user && (
+              <form onSubmit={saveReview} style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+                <select className="form-input" value={reviewForm.rating} onChange={e => setReviewForm({ ...reviewForm, rating: e.target.value })}>
+                  {[5, 4, 3, 2, 1].map(v => <option key={v} value={v}>{v} sao</option>)}
+                </select>
+                <textarea className="form-input" value={reviewForm.comment} onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })} placeholder="Nhận xét khóa học" />
+                <button className="btn btn-primary" type="submit">Gửi đánh giá</button>
+              </form>
+            )}
+            {reviews.map(r => <div key={r.id} style={{ padding: 10, borderBottom: '1px solid var(--border)' }}><b>{r.student_name}</b> — {r.rating} sao<p style={{ color: 'var(--text-secondary)' }}>{r.comment}</p></div>)}
+            {!reviews.length && <p style={{ color: 'var(--text-muted)' }}>Chưa có đánh giá.</p>}
+          </div>
+
+          <div className="card" style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Thảo luận</h3>
+            {user && (
+              <form onSubmit={addDiscussion} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <input className="form-input" value={discussionText} onChange={e => setDiscussionText(e.target.value)} placeholder="Đặt câu hỏi hoặc bình luận" />
+                <button className="btn btn-primary" type="submit">Gửi</button>
+              </form>
+            )}
+            {discussions.map(d => <div key={d.id} style={{ padding: 10, borderBottom: '1px solid var(--border)' }}><b>{d.user_name}</b><p style={{ color: 'var(--text-secondary)' }}>{d.content}</p></div>)}
+            {!discussions.length && <p style={{ color: 'var(--text-muted)' }}>Chưa có thảo luận.</p>}
+          </div>
         </div>
 
         <div style={{ position: 'sticky', top: 20 }}>
@@ -260,14 +325,18 @@ export default function CourseDetailPage() {
             )}
 
             {user?.role !== 'admin' && (
-              <button
-                className="btn btn-primary btn-lg"
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={course.is_enrolled ? handleStartLearning : handleEnroll}
-                disabled={enrolling}
-              >
-                {enrolling ? <span className="spinner" /> : course.is_enrolled ? 'Vào học' : 'Đăng ký khóa học'}
-              </button>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <button
+                  className="btn btn-primary btn-lg"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={course.is_enrolled ? handleStartLearning : handleEnroll}
+                  disabled={enrolling}
+                >
+                  {enrolling ? <span className="spinner" /> : course.is_enrolled ? 'vào học' : 'Đăng kí khóa học'}
+                </button>
+                <button className="btn btn-secondary" onClick={addWishlist}>Lưu wishlist</button>
+                <button className="btn btn-secondary" onClick={reportCourse}>Báo cáo khóa học</button>
+              </div>
             )}
 
             {!user && (

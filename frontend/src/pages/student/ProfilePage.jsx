@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { authApi } from '../../api/client'
 import FormField from '../../components/forms/FormField'
-import { User, Lock, CheckCircle, GraduationCap } from 'lucide-react'
+import { User, Lock, CheckCircle, GraduationCap, Edit3 } from 'lucide-react'
 import { getFieldError } from '../../utils/helpers'
 
 export default function ProfilePage() {
@@ -81,13 +82,21 @@ export default function ProfilePage() {
             background: 'var(--accent-dim)', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
             fontSize: 24, fontWeight: 700, color: 'var(--accent)',
+            overflow: 'hidden',
           }}>
-            {user?.full_name?.[0]?.toUpperCase()}
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              user?.full_name?.[0]?.toUpperCase()
+            )}
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 18, fontWeight: 700 }}>{user?.full_name}</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, textTransform: 'capitalize' }}>{user?.role}</p>
           </div>
+          <Link to="/profile/edit" className="btn btn-secondary btn-sm">
+            <Edit3 size={14} /> Chỉnh sửa
+          </Link>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

@@ -45,6 +45,7 @@ export default function CourseLearnPage() {
   const suppressNextSeekEventRef = useRef(false)
   const suppressAutoSeekLogUntilRef = useRef(0)
   const timelineSeekRef = useRef({ active: false, from: null, to: null })
+  const sessionRef = useRef({ id: `ls-${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), lastActiveAt: Date.now(), idleSeconds: 0 })
   const [course, setCourse] = useState(null)
   const [videos, setVideos] = useState([])
   const [activeId, setActiveId] = useState(null)
@@ -77,8 +78,32 @@ export default function CourseLearnPage() {
   )
   const embedUrl = getEmbedUrl(activeVideo?.video_src)
 
+  const getTelemetry = (video) => {
+    const session = sessionRef.current
+    const activeSeconds = Math.max(0, Math.floor((Date.now() - session.startedAt) / 1000) - session.idleSeconds)
+    return {
+      session_id: session.id,
+      client_timestamp: new Date().toISOString(),
+      is_tab_hidden: document.hidden,
+      is_fullscreen: Boolean(document.fullscreenElement),
+      volume: video?.volume,
+      muted: Boolean(video?.muted),
+      metadata: {
+        active_seconds: activeSeconds,
+        idle_seconds: session.idleSeconds,
+        device_type: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+        browser: navigator.userAgentData?.brands?.[0]?.brand || navigator.userAgent.split(' ')[0],
+        user_agent: navigator.userAgent,
+      },
+    }
+  }
+
   const logLearningEvent = useCallback(async (eventType, payload = {}) => {
     if (!activeVideo?.video_id || embedUrl) return
+    const video = videoRef.current
+    if (document.hidden) sessionRef.current.idleSeconds += Math.max(0, Math.floor((Date.now() - sessionRef.current.lastActiveAt) / 1000))
+    sessionRef.current.lastActiveAt = Date.now()
+    const telemetry = getTelemetry(video)
     try {
       const res = await analyticsApi.trackEvent({
         video: activeVideo.video_id,
@@ -88,7 +113,14 @@ export default function CourseLearnPage() {
         to_seconds: payload.to_seconds,
         delta_seconds: payload.delta_seconds,
         playback_rate: payload.playback_rate,
-        metadata: payload.metadata || {},
+        session_id: telemetry.session_id,
+        client_timestamp: telemetry.client_timestamp,
+        duration_ms: payload.duration_ms || 0,
+        is_tab_hidden: telemetry.is_tab_hidden,
+        is_fullscreen: telemetry.is_fullscreen,
+        volume: telemetry.volume,
+        muted: telemetry.muted,
+        metadata: { ...telemetry.metadata, ...(payload.metadata || {}) },
       });
       if (res.data?.engagement_score !== undefined) {
         if (res.data.engagement_label === 'low' && engagementLabel !== 'low') {
@@ -106,6 +138,7 @@ export default function CourseLearnPage() {
   useEffect(() => {
     progressSyncRef.current = { videoId: activeVideo?.video_id || null, lastSentAt: 0, saving: false }
     completedRef.current = Boolean(activeVideo?.is_completed || activeVideo?.progress?.completed)
+    sessionRef.current = { id: `ls-${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), lastActiveAt: Date.now(), idleSeconds: 0 }
   }, [activeVideo?.video_id, activeVideo?.is_completed, activeVideo?.progress?.completed])
 
   const applyProgressToVideo = (videoId, progress) => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { analyticsApi, courseApi, videoApi } from '../../api/client'
-import { AlertTriangle, Flame, ArrowLeft, BarChart2, Bot, Ruler, RefreshCw, CheckCircle, Loader, Users } from 'lucide-react'
+import { AlertTriangle, Flame, ArrowLeft, BarChart2, Bot, Ruler, RefreshCw, CheckCircle, Loader, Users, Video, ChevronDown } from 'lucide-react'
 
 export default function CourseAnalyticsPage() {
   const { id } = useParams()
@@ -217,18 +217,40 @@ export default function CourseAnalyticsPage() {
             Biểu đồ nhiệt cho biết sinh viên hay tua lại và dừng hình ở phút thứ mấy, giúp bạn cải thiện bài giảng.
           </p>
 
-          <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-            <select 
-              value={selectedVideoId || ''} 
-              onChange={e => setSelectedVideoId(e.target.value)}
-              className="form-control"
-              style={{ maxWidth: 300 }}
-            >
-              <option value="" disabled>Chọn video để phân tích...</option>
-              {videos.map(v => (
-                <option key={v.video_id} value={v.video_id}>{v.order}. {v.title}</option>
-              ))}
-            </select>
+          <div style={{ marginBottom: 24, maxWidth: 420 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Video size={14} /> Chọn video để phân tích
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Video size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)', pointerEvents: 'none' }} />
+              <select
+                value={selectedVideoId || ''}
+                onChange={e => setSelectedVideoId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 40px 12px 40px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.15)' }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
+              >
+                <option value="" disabled>— Chọn video —</option>
+                {videos.map(v => (
+                  <option key={v.video_id} value={v.video_id}>{v.order}. {v.title}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            </div>
           </div>
 
           {!heatmapData?.full_heatmap?.length ? (
@@ -257,8 +279,8 @@ export default function CourseAnalyticsPage() {
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
-                <span>0s</span>
-                <span>{heatmapData.duration_seconds}s</span>
+                <span>00:00</span>
+                <span>{(() => { const s = heatmapData.duration_seconds || 0; const m = Math.floor(s/60); const r = s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}` })()}</span>
               </div>
 
               {heatmapData.hardest_segments?.length > 0 && (

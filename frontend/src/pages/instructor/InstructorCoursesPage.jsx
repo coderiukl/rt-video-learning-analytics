@@ -76,6 +76,7 @@ export default function InstructorCoursesPage() {
               onVideos={(c) => navigate(`/instructor/courses/${c.course_id}/videos`)}
               onAnalytics={(c) => navigate(`/instructor/courses/${c.course_id}/analytics`)}
               onDelete={handleDelete}
+              deleting={deleting}
             />
           ))}
         </div>

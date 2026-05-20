@@ -53,7 +53,7 @@ export default function FormField({
           onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
           onBlur={(e) => (e.target.style.borderColor = error ? 'var(--error)' : 'var(--border)')}
         >
-          <option value="">-- Chọn --</option>
+          {!options?.some(opt => opt.value === '') && <option value="">-- Chọn --</option>}
           {options?.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}

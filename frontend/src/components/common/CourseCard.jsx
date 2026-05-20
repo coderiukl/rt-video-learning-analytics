@@ -1,18 +1,20 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Globe, BarChart2, User } from 'lucide-react'
+import { BookOpen, Globe, BarChart2, User, MoreVertical, Trash2 } from 'lucide-react'
 import { LEVEL_LABELS, LANGUAGE_LABELS, STATUS_LABELS, STATUS_BADGE } from '../../utils/helpers'
 
-export default function CourseCard({ course, showActions, onEdit, onDelete, onVideos, onAnalytics, to }) {
+export default function CourseCard({ course, showActions, onEdit, onDelete, onVideos, onAnalytics, deleting, to }) {
   const navigate = useNavigate()
   const courseId = course.course_id || course.id
+  const isDeleting = deleting === courseId
+  const [showMenu, setShowMenu] = useState(false)
 
   const handleClick = () => navigate(to || `/courses/${courseId}`)
 
   return (
     <div
       className="card"
-      style={{ padding: 0, overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s, border-color 0.2s' }}
+      style={{ padding: 0, overflow: 'visible', cursor: 'pointer', transition: 'transform 0.2s, border-color 0.2s', position: 'relative' }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-2px)'
         e.currentTarget.style.borderColor = 'var(--accent)'
@@ -83,10 +85,10 @@ export default function CourseCard({ course, showActions, onEdit, onDelete, onVi
 
         {/* Actions for instructor */}
         {showActions && (
-          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
             <button
               className="btn btn-secondary btn-sm"
-              style={{ flex: 1, minWidth: '30%' }}
+              style={{ minWidth: 0, padding: '6px 8px', whiteSpace: 'nowrap' }}
               onClick={(e) => { e.stopPropagation(); onEdit?.(course) }}
             >
               Sửa
@@ -94,7 +96,7 @@ export default function CourseCard({ course, showActions, onEdit, onDelete, onVi
             {onVideos && (
               <button
                 className="btn btn-secondary btn-sm"
-                style={{ flex: 1, minWidth: '30%' }}
+                style={{ minWidth: 0, padding: '6px 8px', whiteSpace: 'nowrap' }}
                 onClick={(e) => { e.stopPropagation(); onVideos?.(course) }}
               >
                 Video
@@ -103,20 +105,54 @@ export default function CourseCard({ course, showActions, onEdit, onDelete, onVi
             {onAnalytics && (
               <button
                 className="btn btn-primary btn-sm"
-                style={{ flex: 1, minWidth: '30%' }}
+                style={{ minWidth: 0, padding: '6px 8px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                 onClick={(e) => { e.stopPropagation(); onAnalytics?.(course) }}
                 title="Phân tích Machine Learning"
               >
                 <BarChart2 size={14} /> ML
               </button>
             )}
-            <button
-              className="btn btn-danger btn-sm"
-              style={{ flex: 1, minWidth: '30%' }}
-              onClick={(e) => { e.stopPropagation(); onDelete?.(course) }}
-            >
-              Xóa
-            </button>
+            {onDelete && (
+              <button
+                className="btn btn-danger btn-sm"
+                style={{ minWidth: 0, padding: '6px 8px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                disabled={isDeleting}
+                onClick={(e) => { e.stopPropagation(); onDelete(course) }}
+                title="Xóa khóa học"
+              >
+                <Trash2 size={14} /> {isDeleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            )}
+            <div style={{ position: 'relative', display: 'none' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
+                title="Thêm tùy chọn"
+              >
+                <MoreVertical size={14} />
+              </button>
+              {showMenu && (
+                <div style={{
+                  position: 'absolute', right: 0, top: '100%', marginTop: 4,
+                  background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 1000, minWidth: 140,
+                }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete?.(course); setShowMenu(false) }}
+                    style={{
+                      display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      color: 'var(--danger)', fontSize: 13, transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    🗑️ Xóa khóa học
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

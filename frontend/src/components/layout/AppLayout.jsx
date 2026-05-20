@@ -1,5 +1,6 @@
 import React from 'react'
 import Sidebar from './Sidebar'
+import NotificationBell from '../common/NotificationBell'
 
 export default function AppLayout({ children }) {
   return (
@@ -8,9 +9,12 @@ export default function AppLayout({ children }) {
       <main style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '32px 36px',
+        padding: '24px 36px 32px',
         minWidth: 0,
       }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 18 }}>
+          <NotificationBell />
+        </div>
         {children}
       </main>
     </div>

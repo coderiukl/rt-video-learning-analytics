@@ -16,9 +16,17 @@ export default function CreateCoursePage() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
 
+  const normalizeCategories = (items) => items.flatMap((category) => [
+    { ...category, parent_id: category.parent_id || null },
+    ...(category.subcategories || []).map((subcategory) => ({
+      ...subcategory,
+      parent_id: subcategory.parent_id || category.category_id,
+    })),
+  ])
+
   useEffect(() => {
     categoryApi.list()
-      .then(res => setCategories(res.data?.results || res.data || []))
+      .then(res => setCategories(normalizeCategories(res.data?.results || res.data || [])))
       .catch(() => {})
   }, [])
 
@@ -26,8 +34,12 @@ export default function CreateCoursePage() {
   const subCategories = categories.filter(c => c.parent_id && String(c.parent_id) === String(form.category))
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    if (e.target.name === 'category') setForm(prev => ({ ...prev, category: e.target.value, category_sub: '' }))
+    const { name, value } = e.target
+    setForm(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'category' ? { category_sub: '' } : {}),
+    }))
   }
 
   const handleSubmit = async (e) => {
@@ -98,12 +110,11 @@ export default function CreateCoursePage() {
               onChange={handleChange}
               options={rootCategories.map(c => ({ value: c.category_id, label: c.category_name }))}
               error={getFieldError(error, 'category')} />
-            {subCategories.length > 0 && (
-              <FormField label="Danh mục con" name="category_sub" type="select" value={form.category_sub}
-                onChange={handleChange}
-                options={subCategories.map(c => ({ value: c.category_id, label: c.category_name }))}
-                error={getFieldError(error, 'category_sub')} />
-            )}
+            <FormField label="Danh mục con" name="category_sub" type="select" value={form.category_sub}
+              onChange={handleChange}
+              options={[{ value: '', label: '— Không chọn —' }, ...subCategories.map(c => ({ value: c.category_id, label: c.category_name }))]}
+              disabled={!form.category || subCategories.length === 0}
+              error={getFieldError(error, 'category_sub')} />
           </div>
 
           <FormField label="Trạng thái" name="status" type="select" value={form.status}

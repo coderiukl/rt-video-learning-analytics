@@ -16,7 +16,9 @@ import CourseDetailPage from './pages/public/CourseDetailPage'
 import StudentDashboard from './pages/student/StudentDashboard'
 import MyCoursesPage from './pages/student/MyCoursesPage'
 import ProfilePage from './pages/student/ProfilePage'
+import EditProfilePage from './pages/profile/EditProfilePage'
 import CourseLearnPage from './pages/student/CourseLearnPage'
+import StudentLearningHubPage from './pages/student/StudentLearningHubPage'
 
 // Instructor pages
 import InstructorDashboard from './pages/instructor/InstructorDashboard'
@@ -24,9 +26,9 @@ import InstructorCoursesPage from './pages/instructor/InstructorCoursesPage'
 import CreateCoursePage from './pages/instructor/CreateCoursePage'
 import EditCoursePage from './pages/instructor/EditCoursePage'
 import CourseVideosPage from './pages/instructor/CourseVideosPage'
-import CategoryManagementPage from './pages/instructor/CategoryManagementPage'
 import CourseAnalyticsPage from './pages/instructor/CourseAnalyticsPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import InstructorStudentsPage from './pages/instructor/InstructorStudentsPage'
 
 // Layout wrapper for authenticated pages
 function AuthLayout({ children }) {
@@ -61,9 +63,19 @@ export default function App() {
               <AuthLayout><MyCoursesPage /></AuthLayout>
             </ProtectedRoute>
           } />
+          <Route path="/student/hub" element={
+            <ProtectedRoute role="student">
+              <AuthLayout><StudentLearningHubPage /></AuthLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/student/profile" element={
             <ProtectedRoute role="student">
               <AuthLayout><ProfilePage /></AuthLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile/edit" element={
+            <ProtectedRoute>
+              <AuthLayout><EditProfilePage /></AuthLayout>
             </ProtectedRoute>
           } />
           <Route path="/courses/:id/learn" element={
@@ -76,6 +88,11 @@ export default function App() {
           <Route path="/instructor/dashboard" element={
             <ProtectedRoute role="instructor">
               <AuthLayout><InstructorDashboard /></AuthLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/instructor/students" element={
+            <ProtectedRoute role="instructor">
+              <AuthLayout><InstructorStudentsPage /></AuthLayout>
             </ProtectedRoute>
           } />
           <Route path="/instructor/courses" element={
@@ -103,11 +120,6 @@ export default function App() {
               <AuthLayout><CourseAnalyticsPage /></AuthLayout>
             </ProtectedRoute>
           } />
-          <Route path="/instructor/categories" element={
-            <ProtectedRoute role="instructor">
-              <AuthLayout><CategoryManagementPage /></AuthLayout>
-            </ProtectedRoute>
-          } />
 
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={
@@ -115,7 +127,6 @@ export default function App() {
               <AuthLayout><AdminDashboardPage /></AuthLayout>
             </ProtectedRoute>
           } />
-
           {/* Default redirects */}
           <Route path="/" element={<Navigate to="/courses" replace />} />
           <Route path="*" element={<Navigate to="/courses" replace />} />
