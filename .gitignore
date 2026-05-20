@@ -39,8 +39,9 @@ dist/
 .cache/
 
 docs/
-data/
 
 # Machine Learning models
 *.pkl
 backend/models/
+
+/data/raw
