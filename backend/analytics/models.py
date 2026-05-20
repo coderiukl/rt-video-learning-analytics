@@ -5,6 +5,30 @@ from users.models import StudentProfile
 from videos.models import Video
 
 
+class LearningSession(models.Model):
+    session_id = models.CharField(max_length=64, primary_key=True)
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name="learning_sessions")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="learning_sessions")
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
+    active_seconds = models.PositiveIntegerField(default=0)
+    idle_seconds = models.PositiveIntegerField(default=0)
+    event_count = models.PositiveIntegerField(default=0)
+    device_type = models.CharField(max_length=40, blank=True)
+    browser = models.CharField(max_length=80, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "learning_sessions"
+        indexes = [
+            models.Index(fields=["student", "course"]),
+            models.Index(fields=["course", "started_at"]),
+        ]
+        ordering = ["-started_at"]
+
+
 class LearningEvent(models.Model):
     class EventType(models.TextChoices):
         PLAY = "play", "Play"
@@ -29,6 +53,13 @@ class LearningEvent(models.Model):
     to_seconds = models.PositiveIntegerField(null=True, blank=True)
     delta_seconds = models.IntegerField(default=0)
     playback_rate = models.FloatField(null=True, blank=True)
+    session = models.ForeignKey(LearningSession, null=True, blank=True, on_delete=models.SET_NULL, related_name="events")
+    client_timestamp = models.DateTimeField(null=True, blank=True)
+    duration_ms = models.PositiveIntegerField(default=0)
+    is_tab_hidden = models.BooleanField(default=False)
+    is_fullscreen = models.BooleanField(default=False)
+    volume = models.FloatField(null=True, blank=True)
+    muted = models.BooleanField(default=False)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -10,9 +10,9 @@ from rest_framework.views import APIView
 from courses.models import Course, CourseEnrollment
 from courses.views import get_instructor_profile, get_student_profile, is_approved_instructor
 from videos.models import Video
-from .models import LearningEvent
+from .models import LearningEvent, LearningSession
 from .ml_engine import compute_engagement_score, get_engagement_label, compute_risk_score, compute_video_heatmap
-from .dropout_predictor import predict_dropout, train_model, get_model_status
+from .services.dropout_service import predict as predict_dropout, model_status as get_model_status, reload as reload_dropout_model
 from .learning_style import cluster_learning_styles
 from .recommender import recommend_courses_for_student, recommend_courses_for_student_global
 
@@ -40,6 +40,23 @@ def float_or_none(value):
         return None
 
 
+def bool_or_false(value):
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in {"1", "true", "yes", "on"}
+
+
+def parse_client_timestamp(value):
+    if not value:
+        return None
+    try:
+        from django.utils.dateparse import parse_datetime
+        parsed = parse_datetime(value)
+        return parsed if parsed and timezone.is_aware(parsed) else timezone.make_aware(parsed) if parsed else None
+    except (TypeError, ValueError):
+        return None
+
+
 def serialize_event(event):
     return {
         "event_id": event.event_id,
@@ -56,6 +73,13 @@ def serialize_event(event):
         "to_seconds": event.to_seconds,
         "delta_seconds": event.delta_seconds,
         "playback_rate": event.playback_rate,
+        "session_id": event.session_id,
+        "client_timestamp": event.client_timestamp,
+        "duration_ms": event.duration_ms,
+        "is_tab_hidden": event.is_tab_hidden,
+        "is_fullscreen": event.is_fullscreen,
+        "volume": event.volume,
+        "muted": event.muted,
         "metadata": event.metadata,
         "created_at": event.created_at,
     }
@@ -103,6 +127,9 @@ def build_behavior_payload(events, courses):
                 LearningEvent.EventType.NOTE_UPDATED,
                 LearningEvent.EventType.NOTE_DELETED,
             ]),
+            "hidden_tab_event_count": events.filter(is_tab_hidden=True).count(),
+            "muted_event_count": events.filter(muted=True).count(),
+            "fullscreen_event_count": events.filter(is_fullscreen=True).count(),
         },
         "event_counts": event_counts,
         "videos": [
@@ -153,6 +180,22 @@ class LearningEventCreateView(APIView):
         if event_type not in valid_types:
             return Response({"error": "event_type khong hop le."}, status=status.HTTP_400_BAD_REQUEST)
 
+        session = None
+        session_id = request.data.get("session_id")
+        if session_id:
+            meta = request.data.get("metadata") or {}
+            session, _ = LearningSession.objects.get_or_create(
+                session_id=session_id,
+                defaults={
+                    "student": student,
+                    "course": video.course,
+                    "started_at": timezone.now(),
+                    "device_type": meta.get("device_type", ""),
+                    "browser": meta.get("browser", ""),
+                    "user_agent": meta.get("user_agent", ""),
+                },
+            )
+
         event = LearningEvent.objects.create(
             student=student,
             course=video.course,
@@ -163,11 +206,29 @@ class LearningEventCreateView(APIView):
             to_seconds=int_or_zero(request.data.get("to_seconds")) if request.data.get("to_seconds") is not None else None,
             delta_seconds=int(request.data.get("delta_seconds") or 0),
             playback_rate=float_or_none(request.data.get("playback_rate")),
+            session=session,
+            client_timestamp=parse_client_timestamp(request.data.get("client_timestamp")),
+            duration_ms=int_or_zero(request.data.get("duration_ms")),
+            is_tab_hidden=bool_or_false(request.data.get("is_tab_hidden")),
+            is_fullscreen=bool_or_false(request.data.get("is_fullscreen")),
+            volume=float_or_none(request.data.get("volume")),
+            muted=bool_or_false(request.data.get("muted")),
             metadata=request.data.get("metadata") or {},
         )
+
+        if session:
+            session.event_count = session.events.count()
+            active_seconds = int_or_zero((request.data.get("metadata") or {}).get("active_seconds"))
+            idle_seconds = int_or_zero((request.data.get("metadata") or {}).get("idle_seconds"))
+            if active_seconds:
+                session.active_seconds = max(session.active_seconds, active_seconds)
+            if idle_seconds:
+                session.idle_seconds = max(session.idle_seconds, idle_seconds)
+            if event_type in {LearningEvent.EventType.PAUSE, LearningEvent.EventType.ENDED, LearningEvent.EventType.PROGRESS_SYNC}:
+                session.ended_at = timezone.now()
+            session.save(update_fields=["event_count", "active_seconds", "idle_seconds", "ended_at", "updated_at"])
         
         # Cập nhật ngay lập tức last_accessed_at để bảng At-Risk không báo lỗi "Chưa từng truy cập"
-        from django.utils import timezone
         CourseEnrollment.objects.filter(student=student, course=video.course).update(last_accessed_at=timezone.now())
 
         engagement_score = compute_engagement_score(student, video)
@@ -279,23 +340,30 @@ class AtRiskStudentsView(APIView):
         })
 
 
-class DropoutModelTrainView(APIView):
-    """POST /api/analytics/dropout-model/train/ — trigger retrain (admin/instructor only)"""
+class DropoutModelReloadView(APIView):
+    """POST /api/analytics/dropout-model/reload/
+
+    Training happens offline (DVC/CI). This endpoint only clears the in-process
+    model cache so the next prediction picks up a freshly promoted version
+    from the registry.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if not (is_admin(request.user) or is_approved_instructor(request.user)):
             return Response(
-                {"error": "Chỉ admin hoặc instructor mới có quyền train model."},
+                {"error": "Chỉ admin hoặc instructor mới có quyền reload model."},
                 status=403,
             )
 
-        result = train_model()
-
-        if not result.get("success"):
-            return Response(result, status=400)
-
-        return Response(result, status=200)
+        reload_dropout_model()
+        return Response(
+            {
+                "status": "ok",
+                "message": "Model cache đã được xóa. Lần predict kế tiếp sẽ load lại từ registry.",
+            },
+            status=200,
+        )
 
 
 class DropoutModelStatusView(APIView):

@@ -1,4 +1,4 @@
-from .models import LearningEvent
+from .models import LearningEvent, LearningSession
 
 WEIGHTS = {
     "skip_forward_10": -8,
@@ -111,6 +111,21 @@ def compute_risk_score(student, course):
         if note_count == 0:
             risk_score += 10
             reasons.append("Không có ghi chú nào")
+
+        hidden_tab_ratio = events.filter(is_tab_hidden=True).count() / total_events
+        if hidden_tab_ratio > 0.4:
+            risk_score += 10
+            reasons.append(f"Nhiều hoạt động khi tab bị ẩn ({hidden_tab_ratio:.0%})")
+
+        muted_ratio = events.filter(muted=True).count() / total_events
+        if muted_ratio > 0.6:
+            risk_score += 5
+            reasons.append(f"Thường xem ở trạng thái tắt tiếng ({muted_ratio:.0%})")
+
+    session_count = LearningSession.objects.filter(student=student, course=course, started_at__gte=recent_cutoff).count()
+    if session_count == 0 and enrollment.last_accessed_at:
+        risk_score += 5
+        reasons.append("Không có phiên học được ghi nhận trong 30 ngày")
 
     risk_score = min(100.0, round(risk_score, 1))
     if risk_score >= 70:

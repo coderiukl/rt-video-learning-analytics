@@ -1,0 +1,45 @@
+{
+  "profile": {
+    "0": {
+      "avg_playback_rate": 1.7928,
+      "skip_fwd_ratio": 0.3721,
+      "skip_bwd_ratio": 0.0488,
+      "note_ratio": 0.0175,
+      "avg_session_active_minutes": 22.2281,
+      "hidden_tab_ratio": 0.4539
+    },
+    "1": {
+      "avg_playback_rate": 1.2075,
+      "skip_fwd_ratio": 0.0936,
+      "skip_bwd_ratio": 0.1318,
+      "note_ratio": 0.147,
+      "avg_session_active_minutes": 21.2398,
+      "hidden_tab_ratio": 0.0923
+    },
+    "2": {
+      "avg_playback_rate": 1.0,
+      "skip_fwd_ratio": 0.0,
+      "skip_bwd_ratio": 0.0,
+      "note_ratio": 1.0,
+      "avg_session_active_minutes": 0.0,
+      "hidden_tab_ratio": 0.0
+    },
+    "3": {
+      "avg_playback_rate": 1.125,
+      "skip_fwd_ratio": 0.05,
+      "skip_bwd_ratio": 0.0,
+      "note_ratio": 0.0,
+      "avg_session_active_minutes": 1.3691,
+      "hidden_tab_ratio": 0.1669
+    }
+  },
+  "k_search": {
+    "2": 0.509110649277123,
+    "3": 0.5596064059246667,
+    "4": 0.5783771043678979,
+    "5": 0.4184660894048437,
+    "6": 0.36828509885477645,
+    "7": 0.3550204637581912,
+    "8": 0.36831123262275856
+  }
+}

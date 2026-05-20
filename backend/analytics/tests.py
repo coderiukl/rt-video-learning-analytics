@@ -66,7 +66,7 @@ class DropoutExtractFeaturesTest(TestCase):
         features = extract_features(enrollment, mock_qs)
 
         self.assertIsInstance(features, np.ndarray)
-        self.assertEqual(features.shape, (9,))
+        self.assertEqual(features.shape, (13,))
 
     @patch('analytics.dropout_predictor.LearningEvent.objects.filter')
     def test_extract_features_zero_events(self, mock_filter):
@@ -89,7 +89,7 @@ class DropoutExtractFeaturesTest(TestCase):
 
         features = extract_features(enrollment, mock_qs)
 
-        self.assertEqual(features.shape, (9,))
+        self.assertEqual(features.shape, (13,))
         self.assertEqual(features[0], 30)       # days_inactive = 30 khi null
         self.assertEqual(features[3], 0.0)      # skip_fwd_ratio = 0
         self.assertEqual(features[5], 0.0)      # note_ratio = 0
@@ -134,7 +134,7 @@ class DropoutPredictWithModelTest(TestCase):
 
         # Mock scaler
         mock_scaler = MagicMock()
-        mock_scaler.transform.return_value = np.array([[0.1] * 9])
+        mock_scaler.transform.return_value = np.array([[0.1] * 13])
 
         mock_load.return_value = (mock_model, mock_scaler)
         mock_extract.return_value = np.array([5, 30, 1, 0.2, 0.05, 0.0, 1.5, 0.5, 2.0])

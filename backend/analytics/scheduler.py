@@ -1,38 +1,45 @@
+"""Background scheduler.
+
+Training is no longer triggered from Django — it runs offline via DVC / CI.
+We keep a daily job to invalidate the in-process model cache so the serving
+side picks up new model versions promoted to the registry.
+"""
 import logging
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore, register_events
 from django.utils import timezone
-from .dropout_predictor import train_model
+
+from .services.dropout_service import reload as reload_dropout_model
 
 logger = logging.getLogger(__name__)
 
-def automated_train_model_job():
-    logger.info("Bắt đầu tự động huấn luyện lại model Dropout Prediction...")
+
+def refresh_model_cache_job():
+    logger.info("Refreshing dropout model cache from registry...")
     try:
-        res = train_model()
-        if res.get("success"):
-            logger.info(f"✅ Auto-train thành công! Accuracy: {res.get('accuracy')}")
-        else:
-            logger.error(f"❌ Auto-train thất bại: {res.get('message')}")
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi tự động train model: {e}")
+        reload_dropout_model()
+        logger.info("Model cache invalidated; next predict will reload.")
+    except Exception as exc:
+        logger.error("Failed to invalidate model cache: %s", exc)
+
 
 def start():
-    """Khởi chạy scheduler ngầm."""
     scheduler = BackgroundScheduler(timezone=timezone.get_current_timezone())
     scheduler.add_jobstore(DjangoJobStore(), "default")
 
-    # Chạy mỗi ngày lúc 2:00 AM
     scheduler.add_job(
-        automated_train_model_job,
+        refresh_model_cache_job,
         trigger="cron",
         hour=2,
-        minute=0,
-        id="daily_dropout_model_training",
+        minute=15,
+        id="daily_dropout_model_cache_refresh",
         max_instances=1,
         replace_existing=True,
     )
 
     register_events(scheduler)
     scheduler.start()
-    logger.info("Scheduler đã được khởi động. Model sẽ tự động retrain vào 02:00 AM mỗi ngày.")
+    logger.info(
+        "Scheduler started. Model cache will be refreshed daily at 02:15."
+    )

@@ -1,94 +1,100 @@
 stages:
   extract:
-    # Export source-of-truth database tables into raw CSV snapshots.
-    cmd: python -m mlops.extract_data
+    cmd: python mlops/pipelines/01_extract.py
     deps:
-      - mlops/common.py
-      - mlops/extract_data.py
-      - backend/courses/models.py
-      - backend/videos/models.py
+      - mlops/pipelines/01_extract.py
+      - backend
     outs:
-      - data/raw/courses.csv
-      - data/raw/enrollments.csv
-      - data/raw/videos.csv
-      - data/raw/video_progress.csv
-      - data/raw/video_notes.csv
+      - data/raw
 
   validate:
-    # Stop the pipeline early if raw data is invalid.
-    cmd: python -m mlops.validate_data
+    cmd: python mlops/pipelines/02_validate.py
     deps:
-      - mlops/common.py
-      - mlops/validate_data.py
-      - data/raw/courses.csv
-      - data/raw/enrollments.csv
-      - data/raw/videos.csv
-      - data/raw/video_progress.csv
-    metrics:
-      - metrics/data_validation.json:
+      - mlops/pipelines/02_validate.py
+      - data/raw
+    outs:
+      - reports/data_validation.json:
           cache: false
 
   features:
-    # Build recommender/dropout features from raw snapshots.
-    cmd: python -m mlops.build_features
+    cmd: python mlops/pipelines/03_features.py
     deps:
-      - mlops/common.py
-      - mlops/build_features.py
-      - data/raw/courses.csv
-      - data/raw/enrollments.csv
-      - data/raw/videos.csv
-      - data/raw/video_progress.csv
-      - data/raw/video_notes.csv
-    outs:
-      - data/processed/recommender_interactions.csv
-      - data/processed/dropout_features.csv
-
-  train_recommender:
-    # Train candidate SVD recommender and log run to MLflow.
-    cmd: python -m mlops.train_recommender
-    deps:
-      - mlops/common.py
-      - mlops/mlflow_utils.py
-      - mlops/train_recommender.py
-      - data/processed/recommender_interactions.csv
+      - mlops/pipelines/03_features.py
+      - data/raw
+      - backend/analytics/ml/features.py
+      - backend/analytics/ml/labels.py
+      - backend/analytics/ml/schemas.py
+      - reports/data_validation.json
     params:
-      - recommender
+      - mlops/config/mlops.yaml:
+          - dropout.lookback_days
     outs:
-      - models/candidate/recommender.joblib
-    metrics:
-      - metrics/recommender.json:
+      - data/processed/dropout_features.parquet
+      - data/processed/feature_manifest.json:
+          cache: false
+
+  drift:
+    cmd: python mlops/monitoring/drift.py
+    deps:
+      - mlops/monitoring/drift.py
+      - data/processed/dropout_features.parquet
+    params:
+      - mlops/config/mlops.yaml:
+          - monitoring
+    outs:
+      - reports/drift_report.json:
           cache: false
 
   train_dropout:
-    # Train candidate RandomForest dropout model and log run to MLflow.
-    cmd: python -m mlops.train_dropout
+    cmd: python mlops/pipelines/04_train_dropout.py
     deps:
-      - mlops/common.py
-      - mlops/mlflow_utils.py
-      - mlops/train_dropout.py
-      - data/processed/dropout_features.csv
+      - mlops/pipelines/04_train_dropout.py
+      - data/processed/dropout_features.parquet
+      - backend/analytics/ml/schemas.py
     params:
-      - dropout
+      - mlops/config/mlops.yaml:
+          - dropout
+          - mlflow
     outs:
-      - models/candidate/dropout_model.joblib
+      - models/dropout/dropout_model.pkl
+      - models/dropout/dropout_scaler.pkl
     metrics:
-      - metrics/dropout.json:
+      - metrics/dropout_metrics.json:
           cache: false
 
-  promote:
-    # Promote ready candidate models to production artifacts.
-    cmd: python -m mlops.promote_model
+  train_style:
+    cmd: python mlops/pipelines/05_train_style.py
     deps:
-      - mlops/common.py
-      - mlops/promote_model.py
-      - models/candidate/recommender.joblib
-      - models/candidate/dropout_model.joblib
-      - metrics/recommender.json
-      - metrics/dropout.json
+      - mlops/pipelines/05_train_style.py
+      - data/processed/dropout_features.parquet
+    params:
+      - mlops/config/mlops.yaml:
+          - learning_style
+          - mlflow
     outs:
-      - models/production/recommender.joblib
-      - models/production/dropout_model.joblib
+      - models/style/kmeans.pkl
     metrics:
-      - metrics/promotion.json:
+      - metrics/style_metrics.json:
           cache: false
 
+  train_recommender:
+    cmd: python mlops/pipelines/06_train_recommender.py
+    deps:
+      - mlops/pipelines/06_train_recommender.py
+      - data/raw
+    params:
+      - mlops/config/mlops.yaml:
+          - recommender
+          - mlflow
+    outs:
+      - models/recommender/hybrid.pkl
+    metrics:
+      - metrics/recommender_metrics.json:
+          cache: false
+
+  register:
+    cmd: python mlops/pipelines/08_registrer.py
+    deps:
+      - mlops/pipelines/08_registrer.py
+      - metrics/dropout_metrics.json
+      - models/dropout/dropout_model.pkl

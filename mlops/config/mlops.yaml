@@ -1,0 +1,48 @@
+mlflow:
+  tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "rt-video-learning"
+  registry_uri: "sqlite:///mlflow.db"
+  artifact_root: "./mlartifacts"
+
+dropout:
+  algorithm: xgboost
+  lookback_days: 30
+  test_size: 0.2
+  random_state: 42
+  calibrate: true
+  cv_folds: 5
+  hyperparams:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    scale_pos_weight: auto
+
+  thresholds:
+    high: 0.7
+    medium: 0.4
+
+  promotion:
+    min_f1: 0.75
+    min_roc_auc: 0.80
+    max_drift_psi: 0.2
+
+learning_style:
+  k_range: [2, 8]
+  auto_select: silhouette
+  algorithm: kmeans
+
+recommender:
+  algorithm: hybrid
+  factors: 64
+  regularization: 0.05
+  iterations: 30
+  alpha: 40
+  content_weight: 0.3
+
+monitoring:
+  drift_method: psi
+  drift_threshold: 0.2
+  retrain_on_drift: true
+    

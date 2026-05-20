@@ -1,0 +1,89 @@
+{
+  "snapshot_dir": "data/raw\\2026-05-20",
+  "tables": {
+    "enrollments": {
+      "rows": 62,
+      "cols": [
+        "id",
+        "student_id",
+        "course_id",
+        "status",
+        "course_progress_percent",
+        "total_watch_time_seconds",
+        "videos_completed",
+        "login_streak",
+        "enrolled_at",
+        "completed_at",
+        "last_accessed_at",
+        "updated_at"
+      ]
+    },
+    "learning_events": {
+      "rows": 11404,
+      "cols": [
+        "event_id",
+        "student_id",
+        "course_id",
+        "video_id",
+        "event_type",
+        "position_seconds",
+        "from_seconds",
+        "to_seconds",
+        "delta_seconds",
+        "playback_rate",
+        "session_id",
+        "client_timestamp",
+        "duration_ms",
+        "is_tab_hidden",
+        "is_fullscreen",
+        "volume",
+        "muted",
+        "created_at"
+      ]
+    },
+    "learning_sessions": {
+      "rows": 798,
+      "cols": [
+        "session_id",
+        "student_id",
+        "course_id",
+        "started_at",
+        "ended_at",
+        "active_seconds",
+        "idle_seconds",
+        "event_count",
+        "device_type",
+        "browser",
+        "created_at"
+      ]
+    },
+    "video_progress": {
+      "rows": 1000,
+      "cols": [
+        "progress_id",
+        "student_id",
+        "video_id",
+        "watched_seconds",
+        "duration_seconds",
+        "completed",
+        "completed_at",
+        "last_watched_at"
+      ]
+    },
+    "courses": {
+      "rows": 8,
+      "cols": [
+        "course_id",
+        "category_id",
+        "category_sub_id",
+        "language",
+        "level",
+        "status",
+        "created_at"
+      ]
+    }
+  },
+  "issues": [],
+  "passed": true,
+  "validated_at": "2026-05-20T08:23:27.137308+00:00"
+}

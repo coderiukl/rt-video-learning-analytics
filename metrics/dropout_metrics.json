@@ -1,0 +1,13 @@
+{
+  "cv_roc_auc": 1.0,
+  "accuracy": 0.8461538461538461,
+  "precision": 1.0,
+  "recall": 0.6,
+  "f1": 0.75,
+  "roc_auc": 1.0,
+  "brier": 0.0591890961914271,
+  "num_train": 49,
+  "num_test": 13,
+  "num_pos": 22,
+  "num_neg": 40
+}
