@@ -104,8 +104,11 @@ DATABASES = {
         "NAME":     config("DB_NAME"),
         "USER":     config("DB_USER"),
         "PASSWORD": config("DB_PASSWORD"),
-        "HOST":     config("DB_HOST", default="localhost"),
-        "PORT":     config("DB_PORT", default="5432"),
+        "HOST":     config("DB_HOST"),
+        "PORT":     config("DB_PORT"),
+        "OPTIONS": {
+            "sslmode": "require",
+        }
     }
 }
 
@@ -244,6 +247,16 @@ CLOUDINARY_VIDEO_CHUNK_SIZE = config("CLOUDINARY_VIDEO_CHUNK_SIZE", default=20 *
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# MLOps / model registry
+# Default: shared sqlite store at <project_root>/mlflow.db. Override with an
+# HTTP URI (e.g. "http://127.0.0.1:5000") when running a real tracking server.
+# Set empty to disable MLflow and fall back to local pkl files under
+# <project_root>/models/.
+MLFLOW_TRACKING_URI = config(
+    "MLFLOW_TRACKING_URI",
+    default=f"sqlite:///{BASE_DIR.parent / 'mlflow.db'}",
+)
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
