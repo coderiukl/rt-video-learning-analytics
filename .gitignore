@@ -45,3 +45,18 @@ docs/
 backend/models/
 
 /data/raw
+
+# MLflow local tracking
+mlflow.db
+mlruns/
+
+# DVC managed outputs (kept locally, pushed to remote)
+data/processed/
+
+# Frontend build cache
+frontend/.vite/
+frontend/dist/
+frontend/node_modules/
+
+# Temp
+*.tmp
