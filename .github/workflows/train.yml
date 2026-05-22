@@ -79,6 +79,20 @@ jobs:
           [System.IO.File]::AppendAllText($env:GITHUB_ENV, $sb.ToString(), $utf8NoBom)
           Write-Host "Loaded $count env vars: $($keys -join ', ')"
 
+      - name: Verify env vars loaded
+        run: |
+          $hasKey = -not [string]::IsNullOrEmpty($env:SECRET_KEY)
+          Write-Host "SECRET_KEY set: $hasKey"
+          Write-Host "DB_NAME set: $(-not [string]::IsNullOrEmpty($env:DB_NAME))"
+          Write-Host ".env exists at repo root: $(Test-Path .env)"
+          Write-Host ".env exists at backend/: $(Test-Path backend/.env)"
+          if (-not $hasKey) {
+            Write-Error "SECRET_KEY not in environment. ENV_FILE secret missing or malformed."
+            Write-Host "--- repo root .env (first 3 lines, redacted) ---"
+            if (Test-Path .env) { (Get-Content .env -TotalCount 3) -replace '=.*','=***' }
+            exit 1
+          }
+
       - name: Verify DVC
         run: |
           dvc --version
