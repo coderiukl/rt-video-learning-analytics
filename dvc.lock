@@ -5,9 +5,9 @@ stages:
     deps:
     - path: backend
       hash: md5
-      md5: 8cf01394ea632d4f65dd38880df6d3a3.dir
-      size: 843820
-      nfiles: 210
+      md5: d630b4794bfc97c24fdb0909ae9d6be9.dir
+      size: 321989
+      nfiles: 113
     - path: mlops/pipelines/01_extract.py
       hash: md5
       md5: 1a623e9857b49f05c206c831b7e566ee
@@ -15,7 +15,7 @@ stages:
     outs:
     - path: data/raw
       hash: md5
-      md5: f90f63667546b53528aa46df176f5d44.dir
+      md5: a8ab015510062460467e4ab13aa476a5.dir
       size: 529729
       nfiles: 6
   validate:
@@ -23,45 +23,45 @@ stages:
     deps:
     - path: data/raw
       hash: md5
-      md5: f90f63667546b53528aa46df176f5d44.dir
+      md5: a8ab015510062460467e4ab13aa476a5.dir
       size: 529729
       nfiles: 6
     - path: mlops/pipelines/02_validate.py
       hash: md5
-      md5: 418d1d516bf96ceca67ee556e87211f1
-      size: 4176
+      md5: 4d2711ad21ef7a002a6abf81cadfe7d3
+      size: 4310
     outs:
     - path: reports/data_validation.json
       hash: md5
-      md5: 2efab1dc857463724e459df99e8562c3
+      md5: 2df7efa12bba3dba32874a1444abb057
       size: 1885
   features:
     cmd: python mlops/pipelines/03_features.py
     deps:
     - path: backend/analytics/ml/features.py
       hash: md5
-      md5: 8dc102a9a7af27db34f2375cbd5a77bc
-      size: 4142
+      md5: 9ca958f365da83c977bf70d1d55724c2
+      size: 4249
     - path: backend/analytics/ml/labels.py
       hash: md5
-      md5: 04fcd7a54b524e191a4e501a7a760732
-      size: 779
+      md5: fcd0e85a7601611584ce0ef0dd087893
+      size: 802
     - path: backend/analytics/ml/schemas.py
       hash: md5
-      md5: 2f9d885d4a9da2a9b5801cb5f23b1fa3
-      size: 1209
+      md5: acd9adb82c9dbf67bea81166d0dd59f0
+      size: 1258
     - path: data/raw
       hash: md5
-      md5: f90f63667546b53528aa46df176f5d44.dir
+      md5: a8ab015510062460467e4ab13aa476a5.dir
       size: 529729
       nfiles: 6
     - path: mlops/pipelines/03_features.py
       hash: md5
-      md5: a28ed17b531cb8c055b0a89781474638
-      size: 4592
+      md5: c07cc2fe8c9e6b82f21c1162fe66d00a
+      size: 4716
     - path: reports/data_validation.json
       hash: md5
-      md5: 2efab1dc857463724e459df99e8562c3
+      md5: 2df7efa12bba3dba32874a1444abb057
       size: 1885
     params:
       mlops/config/mlops.yaml:
@@ -69,23 +69,23 @@ stages:
     outs:
     - path: data/processed/dropout_features.parquet
       hash: md5
-      md5: 083c72e3a50828a161ab88db624f3ef4
-      size: 17683
+      md5: 24277e83d7cd35f46f367b4316183846
+      size: 17751
     - path: data/processed/feature_manifest.json
       hash: md5
-      md5: d342fd493fb1c528d4cad3382c2464ea
+      md5: d08be36fefba4d65069f23f698bd48c8
       size: 502
   drift:
     cmd: python mlops/monitoring/drift.py
     deps:
     - path: data/processed/dropout_features.parquet
       hash: md5
-      md5: 083c72e3a50828a161ab88db624f3ef4
-      size: 17683
+      md5: 24277e83d7cd35f46f367b4316183846
+      size: 17751
     - path: mlops/monitoring/drift.py
       hash: md5
-      md5: b50d6203b737e6784cadefac288d522c
-      size: 3511
+      md5: 9f5022a8686a72cb34c6b6cff7be2697
+      size: 3615
     params:
       mlops/config/mlops.yaml:
         monitoring:
@@ -95,23 +95,23 @@ stages:
     outs:
     - path: reports/drift_report.json
       hash: md5
-      md5: 78463c1528283dcab71844b02b034f8d
+      md5: da1b94659ac3673bfd5323e43c883079
       size: 312
   train_dropout:
     cmd: python mlops/pipelines/04_train_dropout.py
     deps:
     - path: backend/analytics/ml/schemas.py
       hash: md5
-      md5: 2f9d885d4a9da2a9b5801cb5f23b1fa3
-      size: 1209
+      md5: acd9adb82c9dbf67bea81166d0dd59f0
+      size: 1258
     - path: data/processed/dropout_features.parquet
       hash: md5
-      md5: 083c72e3a50828a161ab88db624f3ef4
-      size: 17683
+      md5: 24277e83d7cd35f46f367b4316183846
+      size: 17751
     - path: mlops/pipelines/04_train_dropout.py
       hash: md5
-      md5: d221db8c24a665c63853ec00fc110c5d
-      size: 7987
+      md5: cbb3ef689320540fdae238ce9defe601
+      size: 8228
     params:
       mlops/config/mlops.yaml:
         dropout:
@@ -143,27 +143,27 @@ stages:
     outs:
     - path: metrics/dropout_metrics.json
       hash: md5
-      md5: dc16561f72d2aef093a426545cdda942
+      md5: 979394ad8e0542e9bf7a38fba71d0136
       size: 240
     - path: models/dropout/dropout_model.pkl
       hash: md5
-      md5: ea6651e62de83af8c89223b63db5b518
-      size: 1086917
+      md5: 11d6ffd3eeb680660fc54165ffb62f03
+      size: 1086565
     - path: models/dropout/dropout_scaler.pkl
       hash: md5
-      md5: 62cdfa71e761bc26949fe5a338e8f944
+      md5: 83053fb22f251b5338adabc1ddb0a1ad
       size: 1359
   train_style:
     cmd: python mlops/pipelines/05_train_style.py
     deps:
     - path: data/processed/dropout_features.parquet
       hash: md5
-      md5: 083c72e3a50828a161ab88db624f3ef4
-      size: 17683
+      md5: 24277e83d7cd35f46f367b4316183846
+      size: 17751
     - path: mlops/pipelines/05_train_style.py
       hash: md5
-      md5: 2b38f3cbab443aa5ee7f306306213f6d
-      size: 5787
+      md5: 89234b92c969863ffa0868119f93a52d
+      size: 5958
     params:
       mlops/config/mlops.yaml:
         learning_style:
@@ -180,24 +180,24 @@ stages:
     outs:
     - path: metrics/style_metrics.json
       hash: md5
-      md5: 4030a6dd4a1b9dc113be2c7527050e60
+      md5: 5f83652edf6e8e594403c85afd10b57c
       size: 193
     - path: models/style/kmeans.pkl
       hash: md5
-      md5: 3511f6464cf832624d64e5d189cfd1a6
+      md5: 2d133af9f055f89a24b50b5ce01adad5
       size: 2113
   train_recommender:
     cmd: python mlops/pipelines/06_train_recommender.py
     deps:
     - path: data/raw
       hash: md5
-      md5: f90f63667546b53528aa46df176f5d44.dir
+      md5: a8ab015510062460467e4ab13aa476a5.dir
       size: 529729
       nfiles: 6
     - path: mlops/pipelines/06_train_recommender.py
       hash: md5
-      md5: 8baa292c373e79754da4212c171315dd
-      size: 7368
+      md5: 4e1eb9b8d3a06410e7c73e060c8f2056
+      size: 7578
     params:
       mlops/config/mlops.yaml:
         mlflow:
@@ -219,20 +219,20 @@ stages:
       size: 85
     - path: models/recommender/hybrid.pkl
       hash: md5
-      md5: 518f7371d0ad8d5ed823b360f4f87577
+      md5: 37474a21a56b77f276ac1a73e26ca164
       size: 49550
   register:
     cmd: python mlops/pipelines/08_registrer.py
     deps:
     - path: metrics/dropout_metrics.json
       hash: md5
-      md5: dc16561f72d2aef093a426545cdda942
+      md5: 979394ad8e0542e9bf7a38fba71d0136
       size: 240
     - path: mlops/pipelines/08_registrer.py
       hash: md5
-      md5: 490e1793cd6611fc8aabc6e4250db3c2
-      size: 2055
+      md5: 6ff9318fc69669a886250f9d832b4066
+      size: 2120
     - path: models/dropout/dropout_model.pkl
       hash: md5
-      md5: ea6651e62de83af8c89223b63db5b518
-      size: 1086917
+      md5: 11d6ffd3eeb680660fc54165ffb62f03
+      size: 1086565

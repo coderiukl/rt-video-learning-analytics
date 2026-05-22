@@ -1,15 +1,15 @@
 {
-  "days_inactive": 0.8357325196266174,
+  "days_inactive": 0.8371779918670654,
   "progress_percent": 0.0,
   "login_streak": 0.0,
-  "skip_fwd_ratio": 2.303696632385254,
+  "skip_fwd_ratio": 2.3052096366882324,
   "skip_bwd_ratio": 0.0,
   "note_ratio": 0.0,
-  "avg_playback_rate": 0.20281007885932922,
+  "avg_playback_rate": 0.15257208049297333,
   "time_ratio": 0.0,
-  "activity_per_day": 0.018348926678299904,
+  "activity_per_day": 0.0,
   "avg_session_active_minutes": 0.0,
   "session_count_30d": 0.0,
-  "hidden_tab_ratio": 0.019408298656344414,
-  "muted_ratio": 0.0
+  "hidden_tab_ratio": 0.05828513577580452,
+  "muted_ratio": 0.04057028517127037
 }

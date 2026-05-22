@@ -1,5 +1,5 @@
 {
-  "snapshot_dir": "data/raw\\2026-05-20",
+  "snapshot_dir": "data/raw\\2026-05-22",
   "tables": {
     "enrollments": {
       "rows": 62,
@@ -85,5 +85,5 @@
   },
   "issues": [],
   "passed": true,
-  "validated_at": "2026-05-20T08:23:27.137308+00:00"
+  "validated_at": "2026-05-22T03:28:12.214314+00:00"
 }
