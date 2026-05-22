@@ -49,6 +49,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Write .env from secret
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:ENV_FILE)) {
+            Write-Error "ENV_FILE secret is empty or not set"
+            exit 1
+          }
+          $env:ENV_FILE | Out-File -FilePath .env -Encoding utf8 -NoNewline
+          Copy-Item .env backend/.env -Force
+
       - name: Verify DVC
         run: |
           dvc --version
