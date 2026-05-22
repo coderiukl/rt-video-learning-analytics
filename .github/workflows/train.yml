@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 90
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
     env:
       DJANGO_SETTINGS_MODULE: core.settings
       MLFLOW_TRACKING_URI: file:./mlruns
@@ -89,5 +89,4 @@ jobs:
           path: |
             metrics/
             reports/
-            models/
-          retention-days: 30
+          retention-days: 7
