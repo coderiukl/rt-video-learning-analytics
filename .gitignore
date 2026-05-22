@@ -60,3 +60,6 @@ frontend/node_modules/
 
 # Temp
 *.tmp
+
+newtech-dvc-*.json
+*-dvc-*.json

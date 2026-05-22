@@ -1,4 +1,6 @@
 [core]
     remote = myremote
 ['remote "myremote"']
-    url = gdrive://17LxbsRan7MRz-D1lbclA97fe9VfnbZVg
+    url = s3://newtech-dvc-storage/dvcstore
+    region = ap-southeast-1
+
