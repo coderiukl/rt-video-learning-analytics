@@ -57,8 +57,11 @@ jobs:
             Write-Error "ENV_FILE secret is empty or not set"
             exit 1
           }
-          $env:ENV_FILE | Out-File -FilePath .env -Encoding utf8 -NoNewline
+          $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText("$PWD\.env", $env:ENV_FILE, $utf8NoBom)
           Copy-Item .env backend/.env -Force
+          Write-Host "Wrote .env ($((Get-Item .env).Length) bytes), first key:"
+          (Get-Content .env -TotalCount 1) -replace '=.*','=***'
 
       - name: Verify DVC
         run: |
