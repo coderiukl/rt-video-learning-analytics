@@ -1,46 +1,93 @@
 name: retrain
+
 on:
   schedule:
-    - cron: "0 2 * * 1"   # mỗi thứ 2 02:00 UTC
+    - cron: "0 2 * * 1"
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Force rerun all stages"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'mlops/**'
+      - 'dvc.yaml'
+      - 'backend/analytics/ml/**'
+
+permissions:
+  contents: write
 
 jobs:
   retrain:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
     env:
       DJANGO_SETTINGS_MODULE: core.settings
       MLFLOW_TRACKING_URI: file:./mlruns
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ap-southeast-1
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install xgboost shap
+
+      - name: Verify DVC
+        run: |
+          dvc --version
+          dvc status
 
       - name: Pull data from DVC remote
-        run: dvc pull --allow-missing || echo "no remote data yet"
+        continue-on-error: true
+        run: dvc pull --allow-missing
 
       - name: Run pipeline
-        run: dvc repro --pull
+        run: |
+          if ("${{ inputs.force }}" -eq "true") {
+            dvc repro --force
+          } else {
+            dvc repro --pull
+          }
 
       - name: Promote model if gates pass
         run: python mlops/pipelines/08_registrer.py
 
       - name: Push DVC artifacts
         if: success()
-        run: dvc push || echo "no remote configured"
+        continue-on-error: true
+        run: dvc push
 
-      - uses: actions/upload-artifact@v4
+      - name: Commit dvc.lock + metrics
+        if: success()
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          name: training-artifacts
+          commit_message: "chore: retrain artifacts [skip ci]"
+          file_pattern: "dvc.lock metrics/ reports/"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-artifacts-${{ github.run_number }}
           path: |
             metrics/
             reports/
             models/
+          retention-days: 30
