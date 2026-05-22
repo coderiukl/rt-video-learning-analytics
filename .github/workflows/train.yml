@@ -53,15 +53,18 @@ jobs:
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: |
+          Write-Host "ENV_FILE length: $($env:ENV_FILE.Length)"
           if ([string]::IsNullOrEmpty($env:ENV_FILE)) {
-            Write-Error "ENV_FILE secret is empty or not set"
+            Write-Error "ENV_FILE secret is empty or not set. Create it at Repo Settings -> Secrets and variables -> Actions."
             exit 1
           }
           $utf8NoBom = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText("$PWD\.env", $env:ENV_FILE, $utf8NoBom)
           Copy-Item .env backend/.env -Force
 
+          $sb = New-Object System.Text.StringBuilder
           $count = 0
+          $keys = @()
           foreach ($line in $env:ENV_FILE -split "`r?`n") {
             $trimmed = $line.Trim()
             if ($trimmed -eq "" -or $trimmed.StartsWith("#")) { continue }
@@ -69,10 +72,12 @@ jobs:
             if ($idx -lt 1) { continue }
             $key = $trimmed.Substring(0, $idx).Trim()
             $val = $trimmed.Substring($idx + 1).Trim().Trim('"').Trim("'")
-            Add-Content -Path $env:GITHUB_ENV -Value "$key=$val"
+            [void]$sb.AppendLine("$key=$val")
+            $keys += $key
             $count++
           }
-          Write-Host "Loaded $count env vars from ENV_FILE secret"
+          [System.IO.File]::AppendAllText($env:GITHUB_ENV, $sb.ToString(), $utf8NoBom)
+          Write-Host "Loaded $count env vars: $($keys -join ', ')"
 
       - name: Verify DVC
         run: |
