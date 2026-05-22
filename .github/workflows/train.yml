@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 90
     defaults:
       run:
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -File "{0}"
     env:
       DJANGO_SETTINGS_MODULE: core.settings
       MLFLOW_TRACKING_URI: file:./mlruns
