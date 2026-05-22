@@ -1,0 +1,17 @@
+.git/
+venv/
+env/
+__pycache__/
+*.pyc
+
+frontend/node_modules/
+frontend/dist/
+
+.dvc/cache/
+mlflow.db
+mlruns/
+
+media/
+*.log
+.env
+backend/.env

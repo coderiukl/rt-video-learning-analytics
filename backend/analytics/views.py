@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.db.models import Count, Max, Q
 from django.utils import timezone
+from prometheus_client import Counter, Histogram
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +16,22 @@ from .ml_engine import compute_engagement_score, get_engagement_label, compute_r
 from .services.dropout_service import predict as predict_dropout, model_status as get_model_status, reload as reload_dropout_model
 from .learning_style import cluster_learning_styles
 from .recommender import recommend_courses_for_student, recommend_courses_for_student_global
+
+DROPOUT_PREDICTIONS = Counter(
+    "ml_dropout_predictions_total",
+    "Dropout prediction count by risk level",
+    ["risk_level"],
+)
+RECOMMENDATION_LATENCY = Histogram(
+    "ml_recommendation_duration_seconds",
+    "Course recommendation API latency",
+)
+LEARNING_EVENTS = Counter(
+    "learning_events_total",
+    "Learning event count by event type",
+    ["event_type"],
+)
+
 
 def is_admin(user):
     return user.is_staff or user.role == "admin"
@@ -215,6 +232,7 @@ class LearningEventCreateView(APIView):
             muted=bool_or_false(request.data.get("muted")),
             metadata=request.data.get("metadata") or {},
         )
+        LEARNING_EVENTS.labels(event_type=event_type).inc()
 
         if session:
             session.event_count = session.events.count()
@@ -317,6 +335,9 @@ class AtRiskStudentsView(APIView):
             # Dùng predict_dropout (RF nếu có model, fallback rule-based)
             risk_data = predict_dropout(enrollment, events_30d)
             model_type_used = risk_data.get("model_type", "rule-based")
+            DROPOUT_PREDICTIONS.labels(
+                risk_level=risk_data.get("risk_level", "unknown")
+            ).inc()
 
             results.append({
                 "student_id": str(enrollment.student_id),
@@ -446,7 +467,8 @@ class CourseRecommendationView(APIView):
         # Bất kỳ ai cũng có thể xem gợi ý, nhưng lọc bỏ course đã enroll thì cần truyền student.
         # Nếu không phải student (chưa có profile), sẽ truyền None.
 
-        recommendations = recommend_courses_for_student(student, course.course_id)
+        with RECOMMENDATION_LATENCY.time():
+            recommendations = recommend_courses_for_student(student, course.course_id)
 
         return Response({
             "course_id": course_id,
@@ -462,7 +484,8 @@ class PersonalizedCourseRecommendationView(APIView):
         if not student:
             return Response({"error": "Chỉ sinh viên mới có thể nhận gợi ý cá nhân hóa."}, status=403)
 
-        recommendations = recommend_courses_for_student_global(student, n=4)
+        with RECOMMENDATION_LATENCY.time():
+            recommendations = recommend_courses_for_student_global(student, n=4)
 
         return Response({
             "recommendations": recommendations

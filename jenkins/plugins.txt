@@ -1,0 +1,5 @@
+git
+workflow-aggregator
+pipeline-stage-view
+ssh-agent
+credentials

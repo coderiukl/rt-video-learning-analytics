@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: RT Video Learning Analytics
+    orgId: 1
+    folder: RT Video Learning Analytics
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
