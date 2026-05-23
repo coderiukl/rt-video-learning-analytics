@@ -19,7 +19,7 @@ pipeline {
 
         stage('Pull models') {
             steps {
-                sh 'cd ${PROJECT_DIR} && dvc pull models/ --allow-missing || true'
+                sh 'cd ${PROJECT_DIR} && dvc pull --allow-missing || true'
             }
         }
 
