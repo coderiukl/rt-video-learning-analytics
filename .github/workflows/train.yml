@@ -147,3 +147,29 @@ jobs:
             metrics/
             reports/
           retention-days: 7
+
+      - name: Trigger Jenkins CI/CD pipeline
+        if: success()
+        continue-on-error: true
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB: ${{ secrets.JENKINS_JOB }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:JENKINS_URL)) {
+            Write-Host "JENKINS_URL not set, skipping trigger."
+            exit 0
+          }
+          $jobName = if ($env:JENKINS_JOB) { $env:JENKINS_JOB } else { "rt-video-learning-analytics" }
+          $url = "$($env:JENKINS_URL)/job/$jobName/build"
+          Write-Host "Triggering Jenkins job: $url"
+          $pair = "$($env:JENKINS_USER):$($env:JENKINS_TOKEN)"
+          $b64  = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
+          $headers = @{ Authorization = "Basic $b64" }
+          try {
+            Invoke-WebRequest -Uri $url -Method POST -Headers $headers -UseBasicParsing -TimeoutSec 15 | Out-Null
+            Write-Host "Jenkins build queued."
+          } catch {
+            Write-Host "Jenkins trigger failed: $($_.Exception.Message)"
+          }

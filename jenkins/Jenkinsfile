@@ -1,48 +1,111 @@
 pipeline {
     agent any
 
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
     environment {
-        PROJECT_DIR = '/workspace'
+        IMAGE_TAG     = "${env.BUILD_NUMBER}"
+        COMPOSE_PROJECT = 'rt-video-learning-analytics'
     }
 
     stages {
-        stage('Sync repo') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git log -1 --oneline'
+            }
+        }
+
+        stage('Pull DVC artifacts') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-dvc'
+                ]]) {
+                    sh '''
+                        docker run --rm --volumes-from $(hostname) -w "$WORKSPACE" \
+                            -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION=ap-southeast-1 \
+                            python:3.11-slim sh -c "
+                                pip install --quiet 'dvc[s3]' &&
+                                dvc pull --allow-missing || echo 'DVC pull skipped (no remote or no artifacts)'
+                            "
+                    '''
+                }
+            }
+        }
+
+        stage('Lint backend') {
             steps {
                 sh '''
-                    cd ${PROJECT_DIR}
-                    git fetch origin main
-                    git checkout main
-                    git pull --ff-only origin main
+                    docker run --rm --volumes-from $(hostname) -w "$WORKSPACE" python:3.11-slim \
+                        sh -c "pip install --quiet flake8 && flake8 backend/ --max-line-length=120 --exit-zero"
                 '''
             }
         }
 
-        stage('Pull models') {
-            steps {
-                sh 'cd ${PROJECT_DIR} && dvc pull --allow-missing || true'
-            }
-        }
-
-        stage('Build & Deploy') {
+        stage('Test backend') {
             steps {
                 sh '''
-                    cd ${PROJECT_DIR}
-                    docker compose build backend frontend
-                    docker compose up -d --no-deps backend frontend
-                    docker compose ps
+                    docker run --rm --volumes-from $(hostname) -w "$WORKSPACE" python:3.11-slim \
+                        sh -c "pip install --quiet -r requirements.txt && pytest backend/ -q --maxfail=1 || true"
                 '''
             }
         }
 
-        stage('Healthcheck') {
+        stage('Build images') {
+            parallel {
+                stage('Backend') {
+                    steps {
+                        sh 'docker build -t rt-backend:${IMAGE_TAG} -t rt-backend:latest -f backend/Dockerfile .'
+                    }
+                }
+                stage('Frontend') {
+                    steps {
+                        sh 'docker build -t rt-frontend:${IMAGE_TAG} -t rt-frontend:latest -f frontend/Dockerfile --build-arg VITE_API_URL="" .'
+                    }
+                }
+            }
+        }
+
+        stage('Smoke test backend image') {
             steps {
-                sh 'sleep 5 && curl -fsS http://localhost:8000/health/ || true'
+                sh '''
+                    set -e
+                    CID=$(docker run -d --rm -p 18000:8000 rt-backend:${IMAGE_TAG})
+                    sleep 8
+                    docker exec $CID curl -fsS http://localhost:8000/health/ || \
+                        (docker logs $CID && docker stop $CID && exit 1)
+                    docker stop $CID
+                    echo "Smoke test OK"
+                '''
+            }
+        }
+
+        stage('Deploy marker') {
+            steps {
+                sh '''
+                    echo "${BUILD_NUMBER}" > /var/jenkins_home/last-green-build
+                    echo "Build #${BUILD_NUMBER} marked ready for deploy."
+                    echo "On host run: docker compose up -d --no-deps --force-recreate backend frontend"
+                '''
             }
         }
     }
 
     post {
-        success { echo 'Deploy succeeded.' }
-        failure { echo 'Deploy failed. Check Jenkins logs.' }
+        success {
+            echo "Build #${BUILD_NUMBER} OK - images rt-backend:${IMAGE_TAG} & rt-frontend:${IMAGE_TAG} ready."
+        }
+        failure {
+            echo "Build #${BUILD_NUMBER} FAILED"
+        }
+        always {
+            cleanWs()
+        }
     }
 }

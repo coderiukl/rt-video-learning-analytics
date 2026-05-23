@@ -3,3 +3,7 @@ workflow-aggregator
 pipeline-stage-view
 ssh-agent
 credentials
+aws-credentials
+credentials-binding
+timestamper
+ws-cleanup

@@ -19,7 +19,7 @@ RUN mkdir -p /usr/libexec/docker/cli-plugins \
       -o /usr/libexec/docker/cli-plugins/docker-compose \
  && chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 
-RUN pip3 install --break-system-packages dvc
+RUN pip3 install --break-system-packages "dvc[s3]"
 
 USER jenkins
 COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
