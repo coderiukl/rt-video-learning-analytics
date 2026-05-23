@@ -76,12 +76,37 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    CID=$(docker run -d --rm -p 18000:8000 rt-backend:${IMAGE_TAG})
-                    sleep 8
-                    docker exec $CID curl -fsS http://localhost:8000/health/ || \
-                        (docker logs $CID && docker stop $CID && exit 1)
-                    docker stop $CID
+                    CID=$(docker run -d --rm -p 18000:8000 \
+                        -e SECRET_KEY=ci-smoke-key \
+                        -e DEBUG=False \
+                        -e ALLOWED_HOSTS=* \
+                        -e EXTRA_ALLOWED_HOSTS=localhost \
+                        -e DB_NAME=postgres \
+                        -e DB_USER=postgres \
+                        -e DB_PASSWORD=postgres \
+                        -e DB_HOST=localhost \
+                        -e DB_PORT=5432 \
+                        -e EMAIL_HOST_USER=ci@example.com \
+                        -e EMAIL_HOST_PASSWORD=ci \
+                        -e GOOGLE_CLIENT_ID=ci \
+                        -e GOOGLE_CLIENT_SECRET=ci \
+                        rt-backend:${IMAGE_TAG})
+                    OK=0
+                    for i in $(seq 1 15); do
+                        if docker exec $CID python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/').status==200 else 1)" >/dev/null 2>&1; then
+                            OK=1
+                            break
+                        fi
+                        sleep 2
+                    done
+                    if [ "$OK" != "1" ]; then
+                        echo "Smoke test FAILED - container logs:"
+                        docker logs $CID || true
+                        docker stop $CID || true
+                        exit 1
+                    fi
                     echo "Smoke test OK"
+                    docker stop $CID
                 '''
             }
         }
