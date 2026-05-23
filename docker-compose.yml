@@ -54,8 +54,11 @@ services:
     build:
       context: ./jenkins
       dockerfile: Dockerfile
+    user: root
     volumes:
       - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - d:/rt-video-learning-analytics:/workspace
     ports:
       - "8080:8080"
 

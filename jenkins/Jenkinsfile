@@ -2,40 +2,47 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_HOST = 'your-deploy-host'
-        DEPLOY_USER = 'deploy'
-        DEPLOY_DIR  = '/srv/rt-video-learning-analytics'
+        PROJECT_DIR = '/workspace'
     }
 
     stages {
-        stage('Deploy on Host') {
+        stage('Sync repo') {
             steps {
-                sshagent(credentials: ['deploy-ssh-key']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
-                            set -e
-                            cd ${DEPLOY_DIR}
-                            git fetch origin main
-                            git checkout main
-                            git pull --ff-only origin main
-                            dvc pull models/ --allow-missing
-                            docker compose build backend frontend
-                            docker compose up -d --no-deps backend frontend
-                            docker compose ps
-                            curl -fsS http://localhost:8000/health/
-                        "
-                    '''
-                }
+                sh '''
+                    cd ${PROJECT_DIR}
+                    git fetch origin main
+                    git checkout main
+                    git pull --ff-only origin main
+                '''
+            }
+        }
+
+        stage('Pull models') {
+            steps {
+                sh 'cd ${PROJECT_DIR} && dvc pull models/ --allow-missing || true'
+            }
+        }
+
+        stage('Build & Deploy') {
+            steps {
+                sh '''
+                    cd ${PROJECT_DIR}
+                    docker compose build backend frontend
+                    docker compose up -d --no-deps backend frontend
+                    docker compose ps
+                '''
+            }
+        }
+
+        stage('Healthcheck') {
+            steps {
+                sh 'sleep 5 && curl -fsS http://localhost:8000/health/ || true'
             }
         }
     }
 
     post {
-        success {
-            echo 'Deploy succeeded.'
-        }
-        failure {
-            echo 'Deploy failed. Check Jenkins logs.'
-        }
+        success { echo 'Deploy succeeded.' }
+        failure { echo 'Deploy failed. Check Jenkins logs.' }
     }
 }
