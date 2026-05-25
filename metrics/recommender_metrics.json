@@ -1,6 +1,6 @@
 {
-  "n_users": 40,
+  "n_users": 41,
   "n_items": 135,
-  "n_interactions": 828,
+  "n_interactions": 829,
   "n_courses": 8
 }

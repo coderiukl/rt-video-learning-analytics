@@ -1,8 +1,8 @@
 {
-  "snapshot_dir": "data/raw\\2026-05-22",
+  "snapshot_dir": "data/raw\\2026-05-25",
   "tables": {
     "enrollments": {
-      "rows": 62,
+      "rows": 64,
       "cols": [
         "id",
         "student_id",
@@ -19,7 +19,7 @@
       ]
     },
     "learning_events": {
-      "rows": 11404,
+      "rows": 11482,
       "cols": [
         "event_id",
         "student_id",
@@ -42,7 +42,7 @@
       ]
     },
     "learning_sessions": {
-      "rows": 798,
+      "rows": 802,
       "cols": [
         "session_id",
         "student_id",
@@ -58,7 +58,7 @@
       ]
     },
     "video_progress": {
-      "rows": 1000,
+      "rows": 1002,
       "cols": [
         "progress_id",
         "student_id",
@@ -85,5 +85,5 @@
   },
   "issues": [],
   "passed": true,
-  "validated_at": "2026-05-22T03:28:12.214314+00:00"
+  "validated_at": "2026-05-25T05:41:17.013811+00:00"
 }
