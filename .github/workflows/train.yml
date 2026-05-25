@@ -139,14 +139,14 @@ jobs:
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Upload artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: training-artifacts-${{ github.run_number }}
           path: |
             metrics/
             reports/
-          retention-days: 7
+          retention-days: 3
 
       - name: Trigger Jenkins CI/CD pipeline
         if: success()
