@@ -1,7 +1,7 @@
 {
   "k": 4,
-  "silhouette": 0.6119537625664087,
-  "davies_bouldin": 0.45747241805836814,
+  "silhouette": 0.6122963302666918,
+  "davies_bouldin": 0.4571016516573767,
   "n_samples": 64,
   "cluster_sizes": {
     "1": 35,

@@ -1,15 +1,15 @@
 {
-  "days_inactive": 1.304702877998352,
-  "progress_percent": 0.6213557124137878,
-  "login_streak": 0.020677456632256508,
-  "skip_fwd_ratio": 0.22620214521884918,
+  "days_inactive": 1.3063689470291138,
+  "progress_percent": 0.6237932443618774,
+  "login_streak": 0.0,
+  "skip_fwd_ratio": 0.2047884464263916,
   "skip_bwd_ratio": 0.0,
-  "note_ratio": 0.23387199640274048,
+  "note_ratio": 0.23430654406547546,
   "avg_playback_rate": 0.0,
   "time_ratio": 0.01836295612156391,
-  "activity_per_day": 0.2468613088130951,
-  "avg_session_active_minutes": 0.027102898806333542,
-  "session_count_30d": 0.2864164113998413,
-  "hidden_tab_ratio": 1.027777910232544,
-  "muted_ratio": 0.0
+  "activity_per_day": 0.25888463854789734,
+  "avg_session_active_minutes": 0.03230574354529381,
+  "session_count_30d": 0.2890051603317261,
+  "hidden_tab_ratio": 1.0473506450653076,
+  "muted_ratio": 0.0044531021267175674
 }

@@ -1,5 +1,5 @@
 {
   "status": "no_reference",
   "message": "No reference at data/processed/dropout_features_reference.parquet. Bootstrap with: `copy data/processed/dropout_features.parquet data/processed/dropout_features_reference.parquet` after a trusted training run.",
-  "checked_at": "2026-05-25T05:41:19.030268+00:00"
+  "checked_at": "2026-05-25T10:51:43.942585+00:00"
 }
