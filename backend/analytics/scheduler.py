@@ -1,8 +1,7 @@
 """Background scheduler.
 
-Training is no longer triggered from Django — it runs offline via DVC / CI.
 We keep a daily job to invalidate the in-process model cache so the serving
-side picks up new model versions promoted to the registry.
+side picks up new model versions promoted to the registry by the CI/CD pipeline.
 """
 import logging
 
@@ -28,6 +27,7 @@ def start():
     scheduler = BackgroundScheduler(timezone=timezone.get_current_timezone())
     scheduler.add_jobstore(DjangoJobStore(), "default")
 
+    # Job: Refresh cache (02:15 AM)
     scheduler.add_job(
         refresh_model_cache_job,
         trigger="cron",
